@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/* Global styles for better UX */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom chess piece styling */
+.chess-piece {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease-in-out;
+}
+
+/* Board minimal animation */
+.chess-board {
+  transition: none;
+}
+
+/* Square professional styling - minimal animations */
+.chess-square {
+  transition: background-color 0.1s ease-in-out;
+  position: relative;
+}
+
+/* Game status animations */
+@keyframes pulse-check {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+    filter: saturate(300%) brightness(100%);
+  }
+}
+
+
+
+
+.check-animation {
+  animation: pulse-check 1s ease-in-out 2;
+}
+
+/* Move indication animations - subtle and professional */
+@keyframes subtle-pulse {
+  0%, 100% { 
+    opacity: 0.8; 
+  }
+  50% { 
+    opacity: 1; 
+  }
+}
+
+.capture-indicator {
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+.move-indicator {
+  animation: subtle-pulse 2.5s ease-in-out infinite;
+}
+
+/* Smooth fade-in animation for UI elements */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Loading spinner improvements */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Button professional styling - reduced animations */
+button {
+  transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+button:hover:not(:disabled) {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+button:active:not(:disabled) {
+  transform: none;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .chess-square {
+    width: 3rem;
+    height: 3rem;
+    font-size: 2rem;
+  }
+  
+  .board-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* Large screens optimizations */
+@media (min-width: 1024px) {
+  .chess-square {
+    width: 4rem;
+    height: 4rem;
+    font-size: 2.5rem;
+  }
+}
+
+/* Custom scrollbar for move history */
+.move-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.move-history::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.move-history::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.move-history::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Chat scrollbar styling */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Notification animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Form focus styles */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6;
+  border-color: transparent;
+}
+
+/* Card minimal hover effects */
+.card-hover {
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.card-hover:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
