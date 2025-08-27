@@ -156,6 +156,36 @@ gameSchema.index({ 'players.black.userId': 1 });
 gameSchema.index({ gameStatus: 1 });
 gameSchema.index({ createdAt: -1 });
 
+// Pre-save validation to prevent same user in both slots
+gameSchema.pre('save', function(next) {
+  // Check for authenticated users - handle both populated and non-populated userId fields
+  const whiteUserId = this.players.white.userId?._id ? 
+    this.players.white.userId._id.toString() : 
+    this.players.white.userId?.toString();
+  const blackUserId = this.players.black.userId?._id ? 
+    this.players.black.userId._id.toString() : 
+    this.players.black.userId?.toString();
+    
+  if (whiteUserId && blackUserId && whiteUserId === blackUserId) {
+    return next(new Error('Same authenticated user cannot be in both player slots'));
+  }
+  
+  // Check for guest users by guestId
+  if (this.players.white.guestId && this.players.black.guestId && 
+      this.players.white.guestId === this.players.black.guestId) {
+    return next(new Error('Same guest user cannot be in both player slots'));
+  }
+  
+  // Check for guest users by username (additional safety)
+  if (this.players.white.isGuest && this.players.black.isGuest &&
+      this.players.white.username && this.players.black.username &&
+      this.players.white.username === this.players.black.username) {
+    return next(new Error('Same guest username cannot be in both player slots'));
+  }
+  
+  next();
+});
+
 // Method to get game state for client
 gameSchema.methods.getGameState = function() {
   return {
@@ -185,8 +215,15 @@ gameSchema.methods.addMove = function(move) {
 // Method to check if user is player
 gameSchema.methods.isPlayer = function(userId, guestId) {
   if (userId) {
-    return (this.players.white.userId && this.players.white.userId.toString() === userId.toString()) ||
-           (this.players.black.userId && this.players.black.userId.toString() === userId.toString());
+    // Handle both populated and non-populated userId fields
+    const whiteUserId = this.players.white.userId?._id ? 
+      this.players.white.userId._id.toString() : 
+      this.players.white.userId?.toString();
+    const blackUserId = this.players.black.userId?._id ? 
+      this.players.black.userId._id.toString() : 
+      this.players.black.userId?.toString();
+      
+    return (whiteUserId === userId.toString()) || (blackUserId === userId.toString());
   } else if (guestId) {
     return this.players.white.guestId === guestId || this.players.black.guestId === guestId;
   }
@@ -197,8 +234,16 @@ gameSchema.methods.isPlayer = function(userId, guestId) {
 gameSchema.methods.getPlayerColor = function(userId, guestId) {
   // For authenticated users, check by userId
   if (userId) {
-    if (this.players.white.userId && this.players.white.userId.toString() === userId.toString()) return 'white';
-    if (this.players.black.userId && this.players.black.userId.toString() === userId.toString()) return 'black';
+    // Handle both populated and non-populated userId fields
+    const whiteUserId = this.players.white.userId?._id ? 
+      this.players.white.userId._id.toString() : 
+      this.players.white.userId?.toString();
+    const blackUserId = this.players.black.userId?._id ? 
+      this.players.black.userId._id.toString() : 
+      this.players.black.userId?.toString();
+      
+    if (whiteUserId === userId.toString()) return 'white';
+    if (blackUserId === userId.toString()) return 'black';
   }
   
   // For guest users, check by guestId

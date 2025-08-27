@@ -99,10 +99,12 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
       setGameState(gameData);
       setIsSpectator(!response.data.playerColor);
 
-      // Check if both players are ready
+      // Check if both players are ready AND exist
+      const hasWhitePlayer = gameData.players?.white?.userId || gameData.players?.white?.guestId;
+      const hasBlackPlayer = gameData.players?.black?.userId || gameData.players?.black?.guestId;
       const whiteReady = gameData.players?.white?.isReady || false;
       const blackReady = gameData.players?.black?.isReady || false;
-      setBothPlayersReady(whiteReady && blackReady);
+      setBothPlayersReady(hasWhitePlayer && hasBlackPlayer && whiteReady && blackReady);
 
     } catch (error) {
       console.error('Failed to load game state:', error);
@@ -122,6 +124,13 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
           black: data.game.timeControl.blackTime
         });
       }
+
+      // Check if both players are ready AND exist
+      const hasWhitePlayer = data.game.players?.white?.userId || data.game.players?.white?.guestId;
+      const hasBlackPlayer = data.game.players?.black?.userId || data.game.players?.black?.guestId;
+      const whiteReady = data.game.players?.white?.isReady || false;
+      const blackReady = data.game.players?.black?.isReady || false;
+      setBothPlayersReady(hasWhitePlayer && hasBlackPlayer && whiteReady && blackReady);
 
       setIsMyTurn(data.game.currentPlayer === playerColor && !data.isSpectator);
       setConnectionStatus('connected');
@@ -213,7 +222,35 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
 
     const handleError = (error) => {
       console.error('Socket error:', error);
-      alert(error.message || 'An error occurred');
+      
+      // Only show alerts for certain types of errors, and only when it's the user's turn
+      const currentIsMyTurn = gameState?.currentPlayer === playerColor && !isSpectator;
+      const shouldShowAlert = currentIsMyTurn && (
+        error.message?.includes('Invalid move') ||
+        error.message?.includes('Not your turn') ||
+        error.message?.includes('Game not found') ||
+        error.message?.includes('Game is not active') ||
+        error.message?.includes('You are not a player') ||
+        error.message?.includes('Authentication') ||
+        error.message?.includes('Failed to')
+      );
+      
+      // For "Move would put your king in check" only show if it's actually the user's turn
+      const isCheckError = error.message?.includes('Move would put your king in check');
+      
+      if (shouldShowAlert || (isCheckError && currentIsMyTurn)) {
+        alert(error.message || 'An error occurred');
+      } else if (isCheckError && !currentIsMyTurn) {
+        // Log but don't show alert for check errors when it's not user's turn
+        console.warn('Received check error during opponent turn (ignoring):', error.message);
+      } else {
+        // Show generic system errors that don't relate to moves
+        if (!error.message?.includes('Move would put your king in check') && 
+            !error.message?.includes('Invalid move') &&
+            !error.message?.includes('Not your turn')) {
+          alert(error.message || 'An error occurred');
+        }
+      }
     };
 
     // Register event listeners
@@ -240,7 +277,7 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
       socketService.off('game_ended', handleGameEnded);
       socketService.off('error', handleError);
     };
-  }, [playerColor, isSpectator, roomId, loadGameState]);
+  }, [playerColor, isSpectator, roomId, loadGameState, gameState]);
 
   // Join the game room - removed as it's now handled in connection effect
   // useEffect(() => {
@@ -401,8 +438,33 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
     }
 
     switch (gameStatus) {
-      case 'waiting':
-        return 'Waiting for opponent...';
+      case 'waiting': {
+        // Check if both player slots are filled
+        const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId;
+        const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId;
+        
+        if (!hasWhitePlayer && !hasBlackPlayer) {
+          return 'Waiting for players to join...';
+        } else if (!hasBlackPlayer) {
+          return 'Waiting for second player to join...';
+        } else if (!hasWhitePlayer) {
+          return 'Waiting for second player to join...';
+        } else {
+          // Both players exist, check ready status
+          const whiteReady = gameState?.players?.white?.isReady || false;
+          const blackReady = gameState?.players?.black?.isReady || false;
+          
+          if (!whiteReady && !blackReady) {
+            return 'Waiting for both players to be ready...';
+          } else if (!whiteReady) {
+            return 'Waiting for White player to be ready...';
+          } else if (!blackReady) {
+            return 'Waiting for Black player to be ready...';
+          } else {
+            return 'Starting game...';
+          }
+        }
+      }
       case 'active':
         if (isSpectator) {
           return `${gameState?.currentPlayer === 'white' ? 'White' : 'Black'} to move`;
@@ -620,12 +682,28 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
             </svg>
             <h2 className="text-2xl font-bold text-gray-700 mb-2">Waiting for Players</h2>
             <p className="text-gray-600 mb-4">
-              {!gameState?.players?.white?.isReady && !gameState?.players?.black?.isReady
-                ? 'Both players need to click "Ready to Play"'
-                : gameState?.players?.white?.isReady && !gameState?.players?.black?.isReady
-                  ? 'Waiting for Black player to be ready'
-                  : 'Waiting for White player to be ready'
-              }
+              {(() => {
+                const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId;
+                const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId;
+                const whiteReady = gameState?.players?.white?.isReady || false;
+                const blackReady = gameState?.players?.black?.isReady || false;
+                
+                if (!hasWhitePlayer && !hasBlackPlayer) {
+                  return 'Waiting for players to join this room...';
+                } else if (!hasBlackPlayer) {
+                  return 'Waiting for a second player to join...';
+                } else if (!hasWhitePlayer) {
+                  return 'Waiting for a second player to join...';
+                } else if (!whiteReady && !blackReady) {
+                  return 'Both players need to click "Ready to Play"';
+                } else if (!blackReady) {
+                  return 'Waiting for Black player to be ready';
+                } else if (!whiteReady) {
+                  return 'Waiting for White player to be ready';
+                } else {
+                  return 'Starting game...';
+                }
+              })()}
             </p>
           </div>
         )}

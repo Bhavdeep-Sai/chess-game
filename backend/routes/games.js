@@ -186,8 +186,15 @@ router.post('/join/:roomId', optionalAuth, async (req, res) => {
     // First check if they're already in the game (for rejoining)
     let isRejoining = false;
     if (currentUserId) {
-      isRejoining = (game.players.white.userId?.toString() === currentUserId.toString()) || 
-                   (game.players.black.userId?.toString() === currentUserId.toString());
+      // Handle both populated and non-populated userId fields
+      const whiteUserId = game.players.white.userId?._id ? 
+        game.players.white.userId._id.toString() : 
+        game.players.white.userId?.toString();
+      const blackUserId = game.players.black.userId?._id ? 
+        game.players.black.userId._id.toString() : 
+        game.players.black.userId?.toString();
+        
+      isRejoining = (whiteUserId === currentUserId.toString()) || (blackUserId === currentUserId.toString());
     } else if (isGuest && guestUsername) {
       isRejoining = (game.players.white.isGuest && game.players.white.username === guestUsername) ||
                    (game.players.black.isGuest && game.players.black.username === guestUsername);
@@ -219,8 +226,15 @@ router.post('/join/:roomId', optionalAuth, async (req, res) => {
     let wouldBeSelfPlay = false;
     if (currentUserId) {
       // Check if authenticated user is already in one slot and trying to join the other
-      wouldBeSelfPlay = (game.players.white.userId?.toString() === currentUserId.toString()) || 
-                       (game.players.black.userId?.toString() === currentUserId.toString());
+      // Handle both populated and non-populated userId fields
+      const whiteUserId = game.players.white.userId?._id ? 
+        game.players.white.userId._id.toString() : 
+        game.players.white.userId?.toString();
+      const blackUserId = game.players.black.userId?._id ? 
+        game.players.black.userId._id.toString() : 
+        game.players.black.userId?.toString();
+        
+      wouldBeSelfPlay = (whiteUserId === currentUserId.toString()) || (blackUserId === currentUserId.toString());
     } else if (isGuest && guestUsername) {
       // Check if guest user is already in one slot and trying to join the other
       wouldBeSelfPlay = (game.players.white.isGuest && game.players.white.username === guestUsername) ||

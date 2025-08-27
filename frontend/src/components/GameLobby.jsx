@@ -305,6 +305,14 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
               const isCurrentUserInGame = (game.players.white && game.players.white.username === currentUsername) ||
                                          (game.players.black && game.players.black.username === currentUsername);
               
+              // Safeguard: check if both players have the same username (shouldn't happen but just in case)
+              const hasDuplicatePlayer = game.players.white && game.players.black && 
+                                       game.players.white.username === game.players.black.username;
+              
+              if (hasDuplicatePlayer) {
+                console.warn('Detected duplicate player in game:', game.roomId, game.players);
+              }
+              
               return (
                 <div key={game.roomId} className={`p-4 transition-colors duration-150 ${isCurrentUserInGame ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-gray-50'}`}>
                   <div className="flex items-center justify-between">
@@ -321,6 +329,11 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
                         {isCurrentUserInGame && (
                           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                             Your Game
+                          </span>
+                        )}
+                        {hasDuplicatePlayer && (
+                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                            Error
                           </span>
                         )}
                       <span className="text-sm text-gray-500">
@@ -355,7 +368,7 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
                   </div>
 
                   <div className="flex gap-2">
-                    {!game.players.black && !isCurrentUserInGame && (
+                    {!game.players.black && !isCurrentUserInGame && !hasDuplicatePlayer && (
                       <button
                         onClick={() => handleJoinGame(game.roomId)}
                         className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors duration-200"
@@ -364,7 +377,7 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
                       </button>
                     )}
                     
-                    {isCurrentUserInGame && (
+                    {isCurrentUserInGame && !hasDuplicatePlayer && (
                       <button
                         onClick={() => handleJoinGame(game.roomId)}
                         className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200"
@@ -380,6 +393,12 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
                       >
                         Spectate
                       </button>
+                    )}
+                    
+                    {hasDuplicatePlayer && (
+                      <span className="text-red-600 text-sm italic">
+                        Room has data error - please refresh
+                      </span>
                     )}
                   </div>
                 </div>
