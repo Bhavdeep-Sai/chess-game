@@ -4,11 +4,14 @@ import GameInfo from './GameInfo';
 import ChatBox from './ChatBox';
 import PromotionModal from './PromotionModal';
 import CapturedPieces from './CapturedPieces';
+import ThemeToggle from './ThemeToggle';
 import socketService from '../services/socket';
 import { gamesApi } from '../services/api';
 import { getLegalMovesWithTypes } from '../utils/chess';
+import { useTheme } from '../hooks/useTheme';
 
 const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeaveGame }) => {
+  const theme = useTheme();
   const [gameState, setGameState] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [possibleMoves, setPossibleMoves] = useState([]);
@@ -496,287 +499,316 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
 
   if (!gameState) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className={`flex justify-center items-center min-h-screen ${theme.colors.bg.primary}`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading game...</p>
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4`}></div>
+          <p className={theme.colors.text.secondary}>Loading game...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row items-start justify-center gap-8 p-8 bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen">
-      {/* Game Header - Mobile */}
-      <div className="lg:hidden w-full text-center mb-4">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
-          <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-              d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
-          </svg>
-          Room: {roomId}
-        </h1>
-        <div className="text-lg font-semibold text-gray-700 mb-2">
-          {getGameStatusMessage()}
-        </div>
-        {isSpectator && (
-          <div className="text-sm text-blue-600 font-medium bg-blue-50 px-3 py-1 rounded-full inline-block">
-            <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            Spectating
-          </div>
-        )}
+    <div className={`min-h-screen ${theme.colors.bg.primary} transition-colors duration-300`}>
+      {/* Theme Toggle - Fixed positioned for easy access */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
       </div>
-
-      {/* Game Info Panel */}
-      <div className="order-2 lg:order-1 w-full lg:w-100">
-        {/* Captured Pieces Display */}
-        {(bothPlayersReady || gameStatus === 'active' || gameStatus === 'finished') && (<div className="mb-4">
-          <CapturedPieces capturedPieces={capturedPieces} />
-        </div>)}
-
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
-          <div className="text-center mb-4">
-            <h3 className="text-xl font-semibold text-gray-800 flex items-center justify-center">
-              <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                  d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
-              </svg>
-              Room {roomId}
-              {connectionStatus !== 'connected' && (
-                <div className="ml-2 flex items-center text-yellow-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-1"></div>
-                  Connecting...
-                </div>
-              )}
-            </h3>
-            {isSpectator && (
-              <div className="text-sm text-blue-600 font-medium mt-1 bg-blue-50 px-3 py-1 rounded-full inline-block">
-                <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Spectating Mode
-              </div>
-            )}
-            {!isSpectator && playerColor && (
-              <div className={`text-sm font-medium mt-1 px-3 py-1 rounded-full inline-block ${playerColor === 'white'
-                ? 'text-gray-800 bg-gray-100 border border-gray-300'
-                : 'text-white bg-gray-800 border border-gray-600'
-                }`}>
-                Playing as {playerColor === 'white' ? (
-                  <>
-                    White
-                  </>
-                ) : (
-                  <>
-                    Black
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Players */}
-          <div className="space-y-3 mb-6">
-            <div className={`flex items-center justify-between p-3 rounded-lg transition-all duration-200 ${gameState.currentPlayer === 'white' ? 'bg-blue-50 border-2 border-blue-200 shadow-md' : 'bg-gray-50'
-              }`}>
-              <div className="flex items-center gap-2">
-                <div className={`w-4 h-4 bg-white border-2 border-gray-400 rounded ${gameState.currentPlayer === 'white' ? 'animate-pulse shadow-lg' : ''
-                  }`}></div>
-                <span className={`font-medium ${gameState.currentPlayer === 'white' ? 'text-blue-700' : 'text-gray-700'}`}>
-                  {gameState.players?.white?.username || 'Waiting for player...'}
-                </span>
-              </div>
-              <div className={`font-mono ${timeLeft.white < 30000 ? 'text-red-600 animate-pulse' : 'text-gray-600'}`}>
-                {formatTime(timeLeft.white)}
-              </div>
-            </div>
-
-            <div className={`flex items-center justify-between p-3 rounded-lg transition-all duration-200 ${gameState.currentPlayer === 'black' ? 'bg-blue-50 border-2 border-blue-200 shadow-md' : 'bg-gray-50'
-              }`}>
-              <div className="flex items-center gap-2">
-                <div className={`w-4 h-4 bg-gray-800 rounded ${gameState.currentPlayer === 'black' ? 'animate-pulse shadow-lg' : ''
-                  }`}></div>
-                <span className={`font-medium ${gameState.currentPlayer === 'black' ? 'text-blue-700' : 'text-gray-700'}`}>
-                  {gameState.players?.black?.username || 'Waiting for player...'}
-                </span>
-              </div>
-              <div className={`font-mono ${timeLeft.black < 30000 ? 'text-red-600 animate-pulse' : 'text-gray-600'}`}>
-                {formatTime(timeLeft.black)}
-              </div>
-            </div>
-          </div>
-
-          {/* Game Controls */}
-          <div className="space-y-2">
-            {gameStatus === 'waiting' && !isSpectator && !isReady && (
-              <button
-                onClick={handlePlayerReady}
-                className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors duration-200"
-              >
-                Ready to Play
-              </button>
-            )}
-
-            {gameStatus === 'waiting' && isReady && (
-              <div className="text-center text-green-600 font-medium flex items-center justify-center">
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M5 13l4 4L19 7" />
-                </svg>
-                Ready - Waiting for opponent
-              </div>
-            )}
-
-            {gameStatus === 'active' && !isSpectator && (
-              <button
-                onClick={handleResign}
-                className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 transition-colors duration-200"
-              >
-                Resign
-              </button>
-            )}
-
-            <button
-              onClick={handleLeaveGame}
-              className="w-full bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
-            >
-              Leave Game
-            </button>
-          </div>
-        </div>
-
-
-        {/* Chat Box */}
-        <ChatBox
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          disabled={gameStatus === 'finished'}
-          currentUsername={getCurrentUsername()}
-        />
-      </div>
-
-      {/* Main Game Area */}
-      <div className="order-1 lg:order-2 pb-10 lg:pb-0 flex flex-col justify-center m-auto lg:m-10 lg:mx-auto items-center lg:justify-start">
-        {/* Game Header - Desktop */}
-        <div className="hidden lg:block text-center mb-6">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center justify-center">
-            <svg className="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      
+      <div className="flex flex-col lg:flex-row items-start justify-center gap-4 lg:gap-6 py-4 px-5 lg:p-8 min-h-screen w-full mx-auto">
+        {/* Game Header - Mobile */}
+        <div className="lg:hidden w-full text-center mb-4">
+          <h1 className={`text-2xl lg:text-3xl font-bold ${theme.colors.text.primary} mb-2 flex items-center justify-center`}>
+            <svg className={`w-6 h-6 mr-2 ${theme.colors.text.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                 d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
             </svg>
-            Multiplayer Chess
-          </h1>
-          <div className="text-lg text-blue-600 font-medium mb-2">
             Room: {roomId}
-          </div>
-          <div className="text-xl font-semibold text-gray-700">
+          </h1>
+          <div className={`text-lg font-semibold ${theme.colors.text.secondary} mb-2`}>
             {getGameStatusMessage()}
+          </div>
+          {isSpectator && (
+            <div className={`text-sm font-medium ${theme.colors.text.accent} bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full inline-block`}>
+              <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Spectating
+            </div>
+          )}
+        </div>
+
+        {/* Left Panel - Game Info and Controls */}
+        <div className="order-2 lg:order-1 w-full lg:w-80 flex-shrink-0">
+          {/* Captured Pieces Display */}
+          {(bothPlayersReady || gameStatus === 'active' || gameStatus === 'finished') && (
+            <div className="mb-4">
+              <CapturedPieces capturedPieces={capturedPieces} />
+            </div>
+          )}
+
+          <div className={`${theme.colors.card.background} rounded-lg shadow-lg ${theme.colors.card.shadow} p-4 lg:p-6 mb-4 transition-colors duration-300`}>
+            <div className="text-center mb-4">
+              <h3 className={`text-lg lg:text-xl font-semibold ${theme.colors.text.primary} flex items-center justify-center`}>
+                <svg className={`w-6 h-6 mr-2 ${theme.colors.text.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
+                </svg>
+                Room {roomId}
+                {connectionStatus !== 'connected' && (
+                  <div className="ml-2 flex items-center text-yellow-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-1"></div>
+                    Connecting...
+                  </div>
+                )}
+              </h3>
+              {isSpectator && (
+                <div className={`text-sm font-medium mt-1 ${theme.colors.text.accent} bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full inline-block`}>
+                  <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Spectating Mode
+                </div>
+              )}
+              {!isSpectator && playerColor && (
+                <div className={`text-sm font-medium mt-1 px-3 py-1 rounded-full inline-block transition-colors duration-300 ${playerColor === 'white'
+                  ? `${theme.colors.text.primary} ${theme.colors.bg.tertiary} border ${theme.colors.border.secondary}`
+                  : 'text-white bg-gray-800 border border-gray-600'
+                  }`}>
+                  Playing as {playerColor === 'white' ? (
+                    <>
+                      White
+                    </>
+                  ) : (
+                    <>
+                      Black
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Players */}
+            <div className="space-y-3 mb-6">
+              <div className={`flex items-center justify-between p-3 rounded-lg transition-all duration-200 ${
+                gameState.currentPlayer === 'white' 
+                  ? `${theme.colors.text.accent} bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-700 shadow-md` 
+                  : theme.colors.bg.tertiary
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-4 h-4 bg-white border-2 border-gray-400 rounded ${
+                    gameState.currentPlayer === 'white' ? 'animate-pulse shadow-lg' : ''
+                  }`}></div>
+                  <span className={`font-medium ${
+                    gameState.currentPlayer === 'white' ? theme.colors.text.accent : theme.colors.text.primary
+                  }`}>
+                    {gameState.players?.white?.username || 'Waiting for player...'}
+                  </span>
+                </div>
+                <div className={`font-mono ${
+                  timeLeft.white < 30000 ? 'text-red-600 animate-pulse' : theme.colors.text.secondary
+                }`}>
+                  {formatTime(timeLeft.white)}
+                </div>
+              </div>
+
+              <div className={`flex items-center justify-between p-3 rounded-lg transition-all duration-200 ${
+                gameState.currentPlayer === 'black' 
+                  ? `${theme.colors.text.accent} bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-700 shadow-md` 
+                  : theme.colors.bg.tertiary
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-4 h-4 bg-gray-800 rounded ${
+                    gameState.currentPlayer === 'black' ? 'animate-pulse shadow-lg' : ''
+                  }`}></div>
+                  <span className={`font-medium ${
+                    gameState.currentPlayer === 'black' ? theme.colors.text.accent : theme.colors.text.primary
+                  }`}>
+                    {gameState.players?.black?.username || 'Waiting for player...'}
+                  </span>
+                </div>
+                <div className={`font-mono ${
+                  timeLeft.black < 30000 ? 'text-red-600 animate-pulse' : theme.colors.text.secondary
+                }`}>
+                  {formatTime(timeLeft.black)}
+                </div>
+              </div>
+            </div>
+
+            {/* Game Controls */}
+            <div className="space-y-2">
+              {gameStatus === 'waiting' && !isSpectator && !isReady && (
+                <button
+                  onClick={handlePlayerReady}
+                  className={`w-full ${theme.colors.button.success} text-white py-2 rounded-md transition-colors duration-200`}
+                >
+                  Ready to Play
+                </button>
+              )}
+
+              {gameStatus === 'waiting' && isReady && (
+                <div className={`text-center text-green-600 font-medium flex items-center justify-center`}>
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M5 13l4 4L19 7" />
+                  </svg>
+                  Ready - Waiting for opponent
+                </div>
+              )}
+
+              {gameStatus === 'active' && !isSpectator && (
+                <button
+                  onClick={handleResign}
+                  className={`w-full ${theme.colors.button.danger} text-white py-2 rounded-md transition-colors duration-200`}
+                >
+                  Resign
+                </button>
+              )}
+
+              <button
+                onClick={handleLeaveGame}
+                className={`w-full ${theme.colors.button.secondary} text-white py-2 rounded-md transition-colors duration-200`}
+              >
+                Leave Game
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Waiting for players message */}
-        {!bothPlayersReady && gameStatus === 'waiting' && (
-          <div className="text-center py-16">
-            <svg className="w-24 h-24 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">Waiting for Players</h2>
-            <p className="text-gray-600 mb-4">
-              {(() => {
-                const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId;
-                const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId;
-                const whiteReady = gameState?.players?.white?.isReady || false;
-                const blackReady = gameState?.players?.black?.isReady || false;
-                
-                if (!hasWhitePlayer && !hasBlackPlayer) {
-                  return 'Waiting for players to join this room...';
-                } else if (!hasBlackPlayer) {
-                  return 'Waiting for a second player to join...';
-                } else if (!hasWhitePlayer) {
-                  return 'Waiting for a second player to join...';
-                } else if (!whiteReady && !blackReady) {
-                  return 'Both players need to click "Ready to Play"';
-                } else if (!blackReady) {
-                  return 'Waiting for Black player to be ready';
-                } else if (!whiteReady) {
-                  return 'Waiting for White player to be ready';
-                } else {
-                  return 'Starting game...';
-                }
-              })()}
-            </p>
+        {/* Center Panel - Main Game Area */}
+        <div className="order-1 lg:order-2 flex-1 flex flex-col justify-center items-center min-w-0 max-w-2xl">
+          {/* Game Header - Desktop */}
+          <div className="hidden lg:block text-center mb-3">
+            <h1 className={`text-3xl lg:text-4xl font-bold ${theme.colors.text.primary} mb-2 flex items-center justify-center`}>
+              <svg className={`w-8 h-8 mr-3 ${theme.colors.text.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
+              </svg>
+              Multiplayer Chess
+            </h1>
+            <div className={`text-lg ${theme.colors.text.accent} font-medium mb-2`}>
+              Room: {roomId}
+            </div>
+            <div className={`text-xl font-semibold ${theme.colors.text.secondary}`}>
+              {getGameStatusMessage()}
+            </div>
           </div>
-        )}
 
-        {/* Chess Board - Only show when both players are ready or game is active */}
-        {(bothPlayersReady || gameStatus === 'active' || gameStatus === 'finished') && (
-          <div className="relative">
-            {/* Board Labels */}
-            <div className="absolute -left-8 top-0 h-full flex flex-col justify-around text-gray-600 font-semibold">
-              {(playerColor === 'black' ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1]).map(num => (
-                <div key={num} className="h-16 flex items-center">
-                  {num}
-                </div>
-              ))}
+          {/* Waiting for players message */}
+          {!bothPlayersReady && gameStatus === 'waiting' && (
+            <div className="text-center py-8 lg:py-16">
+              <svg className={`w-16 lg:w-24 h-16 lg:h-24 mx-auto mb-4 ${theme.colors.text.muted}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h2 className={`text-xl lg:text-2xl font-bold ${theme.colors.text.primary} mb-2`}>Waiting for Players</h2>
+              <p className={`${theme.colors.text.secondary} mb-4`}>
+                {(() => {
+                  const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId;
+                  const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId;
+                  const whiteReady = gameState?.players?.white?.isReady || false;
+                  const blackReady = gameState?.players?.black?.isReady || false;
+                  
+                  if (!hasWhitePlayer && !hasBlackPlayer) {
+                    return 'Waiting for players to join this room...';
+                  } else if (!hasBlackPlayer) {
+                    return 'Waiting for a second player to join...';
+                  } else if (!hasWhitePlayer) {
+                    return 'Waiting for a second player to join...';
+                  } else if (!whiteReady && !blackReady) {
+                    return 'Both players need to click "Ready to Play"';
+                  } else if (!blackReady) {
+                    return 'Waiting for Black player to be ready';
+                  } else if (!whiteReady) {
+                    return 'Waiting for White player to be ready';
+                  } else {
+                    return 'Starting game...';
+                  }
+                })()}
+              </p>
             </div>
+          )}
 
-            <div className="absolute -bottom-8 left-0 w-full flex justify-around text-gray-600 font-semibold">
-              {(playerColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']).map(letter => (
-                <div key={letter} className="w-16 text-center">
-                  {letter}
+          {/* Chess Board - Only show when both players are ready or game is active */}
+          {(bothPlayersReady || gameStatus === 'active' || gameStatus === 'finished') && (
+            <div className="relative w-full mb-5 max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
+              {/* Board Labels */}
+              <div className={`absolute -left-3 lg:-left-5 top-0 h-full flex flex-col justify-around ${theme.colors.text.secondary} font-semibold text-sm lg:text-base`}>
+                {(playerColor === 'black' ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1]).map(num => (
+                  <div key={num} className="h-10 sm:h-12 md:h-14 lg:h-16 flex items-center">
+                    {num}
+                  </div>
+                ))}
+              </div>
+
+              <div className={`absolute -bottom-6 lg:-bottom-6 -left-1 w-full flex gap-0.5 ${theme.colors.text.secondary} font-semibold text-sm lg:text-base`}>
+                {(playerColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']).map(letter => (
+                  <div key={letter} className="w-10 sm:w-12 md:w-14 lg:w-16 text-center ">
+                    {letter}
+                  </div>
+                ))}
+              </div>
+
+              {/* Main Board */}
+              <div className={`border-2 md:border-10 border-gray-800 bg-gray-800 rounded-lg shadow-2xl transition-colors duration-300 overflow-hidden inline-block`}>
+                <div className="grid grid-cols-8 gap-0 leading-none" style={{ lineHeight: 0 }}>
+                  {(gameState.board || []).map((row, rowIndex) =>
+                    row.map((piece, colIndex) => {
+                      const actualRow = playerColor === 'black' ? 7 - rowIndex : rowIndex;
+                      const actualCol = playerColor === 'black' ? 7 - colIndex : colIndex;
+                      const actualPiece = gameState.board[actualRow][actualCol];
+
+                      const isLight = (rowIndex + colIndex) % 2 === 0;
+
+                      return (
+                        <Square
+                          key={`${rowIndex}-${colIndex}`}
+                          piece={actualPiece}
+                          isLight={isLight}
+                          isSelected={isSquareSelected(actualRow, actualCol)}
+                          isValidMove={isValidMoveSquare(actualRow, actualCol)}
+                          isCapture={isCaptureSquare(actualRow, actualCol)}
+                          isInCheck={isKingInCheck(actualRow, actualCol)}
+                          onClick={() => handleSquareClick(actualRow, actualCol)}
+                          row={rowIndex}
+                          col={colIndex}
+                        />
+                      );
+                    })
+                  )}
                 </div>
-              ))}
-            </div>
-
-            {/* Main Board */}
-            <div className="border-3 md:border-4  border-gray-800 bg-gray-800 p-3 rounded-lg shadow-2xl">
-              <div className="grid grid-cols-8 gap-0 bg-white p-1">
-                {(gameState.board || []).map((row, rowIndex) =>
-                  row.map((piece, colIndex) => {
-                    const actualRow = playerColor === 'black' ? 7 - rowIndex : rowIndex;
-                    const actualCol = playerColor === 'black' ? 7 - colIndex : colIndex;
-                    const actualPiece = gameState.board[actualRow][actualCol];
-
-                    const isLight = (rowIndex + colIndex) % 2 === 0;
-
-                    return (
-                      <Square
-                        key={`${rowIndex}-${colIndex}`}
-                        piece={actualPiece}
-                        isLight={isLight}
-                        isSelected={isSquareSelected(actualRow, actualCol)}
-                        isValidMove={isValidMoveSquare(actualRow, actualCol)}
-                        isCapture={isCaptureSquare(actualRow, actualCol)}
-                        isInCheck={isKingInCheck(actualRow, actualCol)}
-                        onClick={() => handleSquareClick(actualRow, actualCol)}
-                        row={rowIndex}
-                        col={colIndex}
-                      />
-                    );
-                  })
-                )}
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Promotion Modal */}
-      <PromotionModal
-        isOpen={promotionData !== null}
-        playerColor={playerColor}
-        onSelect={handlePromotionSelect}
-        onCancel={handlePromotionCancel}
-      />
+        {/* Right Panel - Chat Box */}
+        <div className="order-3 lg:order-3 w-full my-auto lg:w-80 flex-shrink-0">
+          {/* Chat Box - Always visible on desktop, below board on mobile */}
+          <div className="lg:block">
+            <ChatBox
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              disabled={gameStatus === 'finished'}
+              currentUsername={getCurrentUsername()}
+            />
+          </div>
+        </div>
+
+        {/* Promotion Modal */}
+        <PromotionModal
+          isOpen={promotionData !== null}
+          playerColor={playerColor}
+          onSelect={handlePromotionSelect}
+          onCancel={handlePromotionCancel}
+        />
+      </div>
     </div>
   );
 };

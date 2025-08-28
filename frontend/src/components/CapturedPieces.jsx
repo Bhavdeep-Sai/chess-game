@@ -1,7 +1,9 @@
 import React from 'react';
 import { FaChessKing, FaChessQueen, FaChessRook, FaChessBishop, FaChessKnight, FaChessPawn } from 'react-icons/fa';
+import { useTheme } from '../hooks/useTheme';
 
 const CapturedPieces = ({ capturedPieces }) => {
+  const theme = useTheme();
   const pieceIcons = {
     k: <FaChessKing className="text-lg" />,
     q: <FaChessQueen className="text-lg" />,
@@ -37,7 +39,7 @@ const CapturedPieces = ({ capturedPieces }) => {
     if (!pieces || pieces.length === 0) {
       return (
         <div className="text-center py-4">
-          <span className="text-gray-400 text-sm italic">No captures yet</span>
+          <span className={`${theme.colors.text.muted} text-sm italic`}>No captures yet</span>
         </div>
       );
     }
@@ -61,13 +63,13 @@ const CapturedPieces = ({ capturedPieces }) => {
             return (
               <div 
                 key={type} 
-                className="flex items-center bg-gray-50 rounded-md px-2 py-1 border border-gray-200 shadow-sm"
+                className={`flex items-center ${theme.colors.bg.tertiary} rounded-md px-2 py-1 border ${theme.colors.border.primary} shadow-sm transition-colors duration-300`}
               >
-                <span className={color === 'white' ? 'text-gray-800' : 'text-gray-700'}>
+                <span className={color === 'white' ? theme.colors.text.primary : theme.colors.text.secondary}>
                   {pieceIcons[iconKey]}
                 </span>
                 {count > 1 && (
-                  <span className="ml-1 text-xs font-bold text-gray-600">
+                  <span className={`ml-1 text-xs font-bold ${theme.colors.text.secondary}`}>
                     ×{count}
                   </span>
                 )}
@@ -77,7 +79,7 @@ const CapturedPieces = ({ capturedPieces }) => {
         </div>
         {totalValue > 0 && (
           <div className="text-center">
-            <span className="text-xs text-gray-500 font-medium">
+            <span className={`text-xs ${theme.colors.text.muted} font-medium`}>
               Material: +{totalValue}
             </span>
           </div>
@@ -108,10 +110,10 @@ const CapturedPieces = ({ capturedPieces }) => {
   const materialInfo = calculateMaterialAdvantage();
   
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+    <div className={`${theme.colors.card.background} rounded-xl shadow-lg border ${theme.colors.card.border} overflow-hidden transition-colors duration-300`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800 text-center">
+      <div className={`${theme.colors.bg.tertiary} px-4 py-3 border-b ${theme.colors.border.primary}`}>
+        <h3 className={`text-lg font-semibold ${theme.colors.text.primary} text-center`}>
           Captured Pieces
         </h3>
         {materialInfo && materialInfo.advantage !== 0 && (
@@ -130,10 +132,10 @@ const CapturedPieces = ({ capturedPieces }) => {
         {/* White's captures (pieces taken by white) */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
+            <span className={`text-sm font-medium ${theme.colors.text.primary}`}>
               By White:
             </span>
-            <span className="text-xs text-gray-500">
+            <span className={`text-xs ${theme.colors.text.muted}`}>
               {capturedPieces?.white?.length || 0} pieces
             </span>
           </div>
@@ -141,15 +143,15 @@ const CapturedPieces = ({ capturedPieces }) => {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-200"></div>
+        <div className={`border-t ${theme.colors.border.primary}`}></div>
 
         {/* Black's captures (pieces taken by black) */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
+            <span className={`text-sm font-medium ${theme.colors.text.primary}`}>
               By Black:
             </span>
-            <span className="text-xs text-gray-500">
+            <span className={`text-xs ${theme.colors.text.muted}`}>
               {capturedPieces?.black?.length || 0} pieces
             </span>
           </div>
