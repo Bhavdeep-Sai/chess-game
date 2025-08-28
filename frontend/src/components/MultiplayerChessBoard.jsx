@@ -289,12 +289,15 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
 
   useEffect(() => {
     loadGameState();
+  }, [loadGameState]);
+
+  useEffect(() => {
     // Emit 'player_ready' if player is not ready and not a spectator
-    if (!isSpectator && !isReady && roomId && playerColor) {
+    if (!isSpectator && roomId && playerColor) {
       socketService.emit('player_ready', { roomId });
       setIsReady(true);
     }
-  }, [loadGameState, isReady, isSpectator, roomId, playerColor]);
+  }, [isSpectator, roomId, playerColor]);
 
   // Timer effect
   useEffect(() => {
