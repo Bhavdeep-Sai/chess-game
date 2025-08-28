@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { gamesApi } from '../services/api';
 
 const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestData }) => {
@@ -7,15 +8,15 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTimeControl, setSelectedTimeControl] = useState('10+0');
-  const [roomPassword, setRoomPassword] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [joinRoomId, setJoinRoomId] = useState('');
 
   const { user } = useAuth();
+  const { colors } = useTheme();
 
   useEffect(() => {
     loadGames();
-    const interval = setInterval(loadGames, 5000); // Refresh every 5 seconds
+    const interval = setInterval(loadGames, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -48,58 +49,58 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
         settings: {
           isPrivate: gameSettings.isPrivate,
           password: gameSettings.password,
-          allowSpectators: gameSettings.allowSpectators,
-          autoStart: gameSettings.autoStart
+          allowSpectators: gameSettings.allowSpectators || true,
         }
       };
 
-      if (isGuest) {
+      // Add guest data if playing as guest
+      if (isGuest && guestData) {
         gameData.isGuest = true;
         gameData.guestUsername = guestData.username;
+        console.log('Creating game as guest:', guestData);
+      } else {
+        console.log('Creating game as authenticated user');
       }
 
+      console.log('Game data being sent:', gameData);
       const response = await gamesApi.createGame(gameData);
-      const { roomId } = response.data;
-      
-      onCreateGame?.(roomId);
+      console.log('Create game response:', response.data);
+      onCreateGame(response.data.roomId);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create game');
+      setError('Failed to create game');
+      console.error('Create game error:', err.response?.data || err.message);
     }
   };
 
-  const handleJoinGame = async (roomId, password = '', asSpectator = false) => {
+  const handleJoinGame = async (roomId) => {
     try {
-      const joinData = { password };
+      const joinData = {};
       
-      if (asSpectator) {
-        joinData.spectate = true;
-      }
-      
-      if (isGuest) {
+      // Add guest data if playing as guest
+      if (isGuest && guestData) {
         joinData.isGuest = true;
         joinData.guestUsername = guestData.username;
+        console.log('Joining game as guest:', guestData);
+      } else {
+        console.log('Joining game as authenticated user');
       }
 
+      console.log('Join data being sent:', joinData);
       const response = await gamesApi.joinGame(roomId, joinData);
-      onJoinGame?.(roomId, response.data.playerColor);
+      console.log('Join game response:', response.data);
+      onJoinGame(roomId, response.data.playerColor);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to join game');
+      setError('Failed to join game');
+      console.error('Join game error:', err.response?.data || err.message);
     }
   };
 
   const handleJoinRandom = async () => {
     const currentUsername = isGuest ? guestData.username : user?.username;
-    
     const availableGames = games.filter(game => {
-      // Don't join if room is full
-      if (game.players.black) return false;
-      
-      // Don't join if has password
+      if (game.status !== 'waiting') return false;
       if (game.settings.hasPassword) return false;
-      
-      // Don't join if current user is already in the game
       if (game.players.white && game.players.white.username === currentUsername) return false;
-      
       return true;
     });
 
@@ -107,7 +108,6 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
       const randomGame = availableGames[Math.floor(Math.random() * availableGames.length)];
       await handleJoinGame(randomGame.roomId);
     } else {
-      // Create a new game if no available games
       await handleCreateGame({
         isPrivate: false,
         password: '',
@@ -117,296 +117,316 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
     }
   };
 
-  const formatTimeControl = (timeControl) => {
-    const minutes = Math.floor(timeControl.initialTime / 60000);
-    const increment = Math.floor(timeControl.increment / 1000);
-    return increment > 0 ? `${minutes}+${increment}` : `${minutes} min`;
+  // Helper function to check if current user is in the game
+  const isCurrentUserInGame = (game) => {
+    const currentUsername = isGuest ? guestData?.username : user?.username;
+    if (!currentUsername) return false;
+    
+    return (
+      (game.players?.white?.username === currentUsername) ||
+      (game.players?.black?.username === currentUsername)
+    );
   };
 
-  const formatPlayerRating = (player) => {
-    if (!player) return null;
-    return (
-      <span>
-        {player.username} ({player.rating})
-        {player.isGuest && (
-          <svg className="w-4 h-4 inline-block ml-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        )}
-      </span>
-    );
+  // Helper function to get current user's color in the game
+  const getCurrentUserColor = (game) => {
+    const currentUsername = isGuest ? guestData?.username : user?.username;
+    if (!currentUsername) return null;
+    
+    if (game.players?.white?.username === currentUsername) return 'white';
+    if (game.players?.black?.username === currentUsername) return 'black';
+    return null;
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className={`flex justify-center items-center min-h-screen ${colors.bg.primary}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Chess Lobby</h1>
-        <p className="text-gray-600">
-          Welcome {isGuest ? guestData.username : user?.username}! 
-          {isGuest && ' (Playing as Guest)'}
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
-          <button 
-            onClick={() => setError(null)}
-            className="ml-2 text-red-800 hover:text-red-900"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <div className={`min-h-screen ${colors.bg.primary} transition-colors duration-300`}>
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Header */}
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className={`text-3xl sm:text-4xl lg:text-5xl font-bold ${colors.text.primary} mb-4`}>
+            🏆 Chess Lobby
+          </h1>
+          <p className={`${colors.text.secondary} text-base sm:text-lg lg:text-xl`}>
+            Welcome {isGuest ? guestData.username : user?.username}! 
+            {isGuest && ' (Playing as Guest)'}
+          </p>
         </div>
-      )}
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <button
-          onClick={handleJoinRandom}
-          className="bg-green-600 text-white py-4 px-6 rounded-lg hover:bg-green-700 transition-colors duration-200 font-semibold text-lg"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          Play Random Opponent
-        </button>
-        
-        <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="bg-blue-600 text-white py-4 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-200 font-semibold text-lg"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-          </svg>
-          Create Game Room
-        </button>
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg slide-in-right">
+            <div className="flex items-center justify-between">
+              <span>{error}</span>
+              <button 
+                onClick={() => setError(null)}
+                className="ml-2 text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
-        <button
-          onClick={onPlayPractice}
-          className="bg-purple-600 text-white py-4 px-6 rounded-lg hover:bg-purple-700 transition-colors duration-200 font-semibold text-lg"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-          Practice Mode
-        </button>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          <button
+            onClick={handleJoinRandom}
+            className={`
+              ${colors.button.success} text-white py-4 px-6 rounded-xl 
+              transition-all duration-200 font-semibold text-base sm:text-lg
+              hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
+              focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2
+              flex items-center justify-center gap-2
+            `}
+          >
+            <span>⚡</span>
+            <span className="hidden sm:inline">Play Random</span>
+            <span className="sm:hidden">Random</span>
+          </button>
+          
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className={`
+              ${colors.button.primary} text-white py-4 px-6 rounded-xl 
+              transition-all duration-200 font-semibold text-base sm:text-lg
+              hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
+              focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
+              flex items-center justify-center gap-2
+            `}
+          >
+            <span>🏠</span>
+            <span className="hidden sm:inline">Create Room</span>
+            <span className="sm:hidden">Create</span>
+          </button>
 
-        <div className="bg-gray-100 p-4 rounded-lg">
-          <h3 className="font-semibold text-gray-700 mb-2">Join by Room ID</h3>
-          <div className="flex">
+          <button
+            onClick={onPlayPractice}
+            className={`
+              bg-purple-600 hover:bg-purple-700 text-white py-4 px-6 rounded-xl 
+              transition-all duration-200 font-semibold text-base sm:text-lg
+              hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
+              focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2
+              flex items-center justify-center gap-2
+            `}
+          >
+            <span>🎯</span>
+            <span className="hidden sm:inline">Practice Mode</span>
+            <span className="sm:hidden">Practice</span>
+          </button>
+
+          <div className="relative">
             <input
               type="text"
               value={joinRoomId}
               onChange={(e) => setJoinRoomId(e.target.value.toUpperCase())}
               placeholder="Room ID"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               maxLength={8}
+              className={`
+                w-full px-4 py-3 pr-16 rounded-xl border transition-all duration-200
+                ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                placeholder-gray-400 dark:placeholder-gray-500
+                text-sm sm:text-base font-mono
+              `}
             />
             <button
-              onClick={() => handleJoinGame(joinRoomId)}
-              disabled={!joinRoomId}
-              className="bg-gray-600 text-white px-4 py-2 rounded-r-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => joinRoomId && handleJoinGame(joinRoomId)}
+              disabled={!joinRoomId.trim()}
+              className={`
+                absolute right-2 top-1/2 transform -translate-y-1/2
+                px-3 py-2 rounded-lg transition-all duration-200
+                ${colors.button.primary} text-white text-sm font-medium
+                disabled:opacity-50 disabled:cursor-not-allowed
+                hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400
+              `}
             >
               Join
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Create Game Form */}
-      {showCreateForm && (
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Create New Game</h3>
+        {/* Create Game Form */}
+        {showCreateForm && (
+          <div className={`${colors.card.background} rounded-2xl shadow-xl p-6 sm:p-8 mb-8 sm:mb-12 border ${colors.card.border} fade-in`}>
+            <h3 className={`text-xl sm:text-2xl font-bold ${colors.text.primary} mb-6`}>🎮 Create New Game</h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+                  ⏱️ Time Control
+                </label>
+                <select
+                  value={selectedTimeControl}
+                  onChange={(e) => setSelectedTimeControl(e.target.value)}
+                  className={`
+                    w-full px-4 py-3 rounded-lg border transition-all duration-200
+                    ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                  `}
+                >
+                  <option value="1+0">1 minute</option>
+                  <option value="3+0">3 minutes</option>
+                  <option value="5+0">5 minutes</option>
+                  <option value="10+0">10 minutes</option>
+                  <option value="15+10">15+10</option>
+                  <option value="30+0">30 minutes</option>
+                </select>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    handleCreateGame({ isPrivate: false, password: '' });
+                    setShowCreateForm(false);
+                  }}
+                  className={`
+                    flex-1 py-3 px-6 rounded-lg font-semibold text-white
+                    transition-all duration-200 transform
+                    ${colors.button.success}
+                    hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+                  `}
+                >
+                  🌍 Public Game
+                </button>
+                <button
+                  onClick={() => setShowCreateForm(false)}
+                  className={`
+                    px-6 py-3 rounded-lg font-semibold
+                    transition-all duration-200 transform
+                    ${colors.button.ghost} ${colors.text.primary}
+                    hover:shadow-md active:scale-[0.98]
+                    focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+                  `}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Active Games */}
+        <div className={`${colors.card.background} rounded-2xl shadow-xl p-6 sm:p-8 border ${colors.card.border}`}>
+          <h3 className={`text-xl sm:text-2xl font-bold ${colors.text.primary} mb-6 flex items-center gap-2`}>
+            <span>🎲</span>
+            <span>Active Games ({games.length})</span>
+          </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time Control
-              </label>
-              <select
-                value={selectedTimeControl}
-                onChange={(e) => setSelectedTimeControl(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="1+0">1 minute</option>
-                <option value="3+0">3 minutes</option>
-                <option value="5+0">5 minutes</option>
-                <option value="10+0">10 minutes</option>
-                <option value="15+10">15+10 seconds</option>
-                <option value="30+0">30 minutes</option>
-              </select>
+          {games.length === 0 ? (
+            <div className={`text-center py-12 ${colors.text.secondary}`}>
+              <div className="text-6xl mb-4">♟️</div>
+              <p className="text-lg">No active games at the moment</p>
+              <p className="text-sm mt-2">Create a game or play practice mode!</p>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Room Password (Optional)
-              </label>
-              <input
-                type="password"
-                value={roomPassword}
-                onChange={(e) => setRoomPassword(e.target.value)}
-                placeholder="Leave empty for public room"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={() => handleCreateGame({
-                isPrivate: !!roomPassword,
-                password: roomPassword,
-                allowSpectators: true,
-                autoStart: false
-              })}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200"
-            >
-              Create Room
-            </button>
-            <button
-              onClick={() => setShowCreateForm(false)}
-              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors duration-200"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Available Games */}
-      <div className="bg-white rounded-lg shadow-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-xl font-semibold text-gray-800">Available Games</h3>
-          <p className="text-gray-600">Click on a game to join or spectate</p>
-        </div>
-
-        {games.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" viewBox="0 0 45 45" fill="currentColor">
-              <path d="M22.5,9c-2.21,0-4,1.79-4,4,0,0.89,0.29,1.71,0.78,2.38C17.33,16.5,16,18.59,16,21c0,2.03,0.94,3.84,2.41,5.03-3,1.06-7.41,5.55-7.41,13.47h23c0-7.92-4.41-12.41-7.41-13.47C27.06,24.84,28,23.03,28,21c0-2.41-1.33-4.5-3.28-5.62C25.21,14.71,25.5,13.89,25.5,13c0-2.21-1.79-4-4-4z" stroke="#000" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <p>No games available. Create one to start playing!</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {games.map((game) => {
-              const currentUsername = isGuest ? guestData.username : user?.username;
-              const isCurrentUserInGame = (game.players.white && game.players.white.username === currentUsername) ||
-                                         (game.players.black && game.players.black.username === currentUsername);
-              
-              // Safeguard: check if both players have the same username (shouldn't happen but just in case)
-              const hasDuplicatePlayer = game.players.white && game.players.black && 
-                                       game.players.white.username === game.players.black.username;
-              
-              if (hasDuplicatePlayer) {
-                console.warn('Detected duplicate player in game:', game.roomId, game.players);
-              }
-              
-              return (
-                <div key={game.roomId} className={`p-4 transition-colors duration-150 ${isCurrentUserInGame ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-gray-50'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-4">
-                        <div className="font-mono text-lg font-semibold text-blue-600">
-                          {game.roomId}
-                        </div>
-                        {game.settings.hasPassword && (
-                          <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                        )}
-                        {isCurrentUserInGame && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            Your Game
-                          </span>
-                        )}
-                        {hasDuplicatePlayer && (
-                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                            Error
-                          </span>
-                        )}
-                      <span className="text-sm text-gray-500">
-                        {formatTimeControl(game.timeControl)}
-                      </span>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+              {games.map((game) => (
+                <div
+                  key={game.roomId}
+                  className={`
+                    p-4 sm:p-6 rounded-xl border transition-all duration-200
+                    ${colors.card.background} ${colors.border.primary}
+                    hover:shadow-lg hover:scale-[1.02] card-hover
+                  `}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <p className={`font-mono text-sm ${colors.text.muted}`}>
+                        Room: {game.roomId}
+                      </p>
+                      <p className={`text-lg font-semibold ${colors.text.primary}`}>
+                        {game.timeControl ? `${Math.floor(game.timeControl.initialTime / 60000)}+${Math.floor(game.timeControl.increment / 1000)}` : 'Custom'}
+                      </p>
                     </div>
-                    
-                    <div className="flex items-center gap-6 mt-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-white border-2 border-gray-400 rounded"></div>
-                        <span className="text-sm">
-                          {formatPlayerRating(game.players.white) || 'Waiting...'}
-                        </span>
-                      </div>
-                      <div className="text-gray-400">vs</div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-gray-800 rounded"></div>
-                        <span className="text-sm">
-                          {formatPlayerRating(game.players.black) || 'Waiting...'}
-                        </span>
-                      </div>
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      game.status === 'waiting' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                    }`}>
+                      {game.status === 'waiting' ? '🟢 Waiting' : '🟡 Playing'}
                     </div>
-
-                    {game.spectatorCount > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        {game.spectatorCount} spectator{game.spectatorCount !== 1 ? 's' : ''}
-                      </div>
-                    )}
                   </div>
 
-                  <div className="flex gap-2">
-                    {!game.players.black && !isCurrentUserInGame && !hasDuplicatePlayer && (
-                      <button
-                        onClick={() => handleJoinGame(game.roomId)}
-                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors duration-200"
-                      >
-                        Join as Player
-                      </button>
-                    )}
-                    
-                    {isCurrentUserInGame && !hasDuplicatePlayer && (
-                      <button
-                        onClick={() => handleJoinGame(game.roomId)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200"
-                      >
-                        Rejoin Game
-                      </button>
-                    )}
-                    
-                    {game.settings.allowSpectators && !isCurrentUserInGame && (
-                      <button
-                        onClick={() => handleJoinGame(game.roomId, '', true)}
-                        className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors duration-200"
-                      >
-                        Spectate
-                      </button>
-                    )}
-                    
-                    {hasDuplicatePlayer && (
-                      <span className="text-red-600 text-sm italic">
-                        Room has data error - please refresh
+                  <div className="space-y-2 mb-4">
+                    <div className={`flex items-center justify-between ${colors.text.secondary}`}>
+                      <span>White:</span>
+                      <span className="font-medium">
+                        {game.players?.white?.username || 'Waiting...'}
                       </span>
+                    </div>
+                    <div className={`flex items-center justify-between ${colors.text.secondary}`}>
+                      <span>Black:</span>
+                      <span className="font-medium">
+                        {game.players?.black?.username || 'Waiting...'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Debug info - temporary */}
+                    {console.log('Game:', game.roomId, 'Status:', game.status, 'Current user in game:', isCurrentUserInGame(game), 'Current username:', isGuest ? guestData?.username : user?.username, 'Game players:', game.players)}
+                    
+                    {/* Always show appropriate buttons based on game state */}
+                    {!game.players?.black?.username && !isCurrentUserInGame(game) && (
+                      <button
+                        onClick={() => handleJoinGame(game.roomId)}
+                        className={`
+                          w-full py-2 px-4 rounded-lg font-semibold text-white
+                          transition-all duration-200 transform
+                          ${colors.button.primary}
+                          hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                        `}
+                      >
+                        🚀 Join Game
+                      </button>
+                    )}
+                    
+                    {isCurrentUserInGame(game) && (
+                      <button
+                        onClick={() => onJoinGame(game.roomId, getCurrentUserColor(game))}
+                        className={`
+                          w-full py-2 px-4 rounded-lg font-semibold text-white
+                          transition-all duration-200 transform
+                          ${colors.button.success}
+                          hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                          focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+                        `}
+                      >
+                        {game.players?.black?.username ? '🎮 Resume Game' : '🎮 Continue Game'}
+                      </button>
+                    )}
+                    
+                    {game.players?.black?.username && !isCurrentUserInGame(game) && (
+                      <button
+                        onClick={() => onJoinGame(game.roomId, 'spectator')}
+                        className={`
+                          w-full py-2 px-4 rounded-lg font-semibold text-white
+                          transition-all duration-200 transform
+                          bg-purple-600 hover:bg-purple-700
+                          hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
+                          focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
+                        `}
+                      >
+                        👁️ Spectate Game
+                      </button>
                     )}
                   </div>
                 </div>
-              </div>
-            );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

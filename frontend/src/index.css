@@ -1,14 +1,38 @@
 @import "tailwindcss";
 
+/* Root variables for theme support */
+:root {
+  --chess-light-square: #f0d9b5;
+  --chess-dark-square: #b58863;
+  --chess-border: #8b4513;
+}
+
+/* Dark mode chess colors */
+.dark:root {
+  --chess-light-square: #ecd5a6;
+  --chess-dark-square: #a1825a;
+  --chess-border: #654321;
+}
+
 /* Global styles for better UX */
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode support */
+.dark {
+  color-scheme: dark;
 }
 
 /* Custom chess piece styling */
@@ -19,17 +43,62 @@ body {
   -ms-user-select: none;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
   transition: transform 0.15s ease-in-out;
+  cursor: grab;
+}
+
+.chess-piece:active {
+  cursor: grabbing;
 }
 
 /* Board minimal animation */
 .chess-board {
   transition: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dark .chess-board {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* Square professional styling - minimal animations */
 .chess-square {
-  transition: background-color 0.1s ease-in-out;
+  transition: background-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.chess-square:hover {
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive chess board */
+@media (max-width: 640px) {
+  .chess-square {
+    width: clamp(2.5rem, 10vw, 3.5rem);
+    height: clamp(2.5rem, 10vw, 3.5rem);
+    font-size: clamp(1.2rem, 6vw, 2rem);
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .chess-square {
+    width: clamp(3rem, 8vw, 4rem);
+    height: clamp(3rem, 8vw, 4rem);
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+  }
+}
+
+@media (min-width: 1025px) {
+  .chess-square {
+    width: clamp(4rem, 6vw, 5rem);
+    height: clamp(4rem, 6vw, 5rem);
+    font-size: clamp(2rem, 3vw, 2.8rem);
+  }
 }
 
 /* Game status animations */
@@ -41,8 +110,244 @@ body {
   }
   50% {
     opacity: 1;
+    transform: scale(1.05);
+    filter: saturate(150%) brightness(110%);
+  }
+}
+
+.check-animation {
+  animation: pulse-check 1s ease-in-out 2;
+}
+
+/* Move indication animations - subtle and professional */
+@keyframes subtle-pulse {
+  0%, 100% { 
+    opacity: 0.8; 
     transform: scale(1);
-    filter: saturate(300%) brightness(100%);
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.1);
+  }
+}
+
+@keyframes capture-glow {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.1);
+  }
+}
+
+.capture-indicator {
+  animation: capture-glow 2s ease-in-out infinite;
+}
+
+.move-indicator {
+  animation: subtle-pulse 2.5s ease-in-out infinite;
+}
+
+/* Smooth fade-in animation for UI elements */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.4s ease-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.4s ease-out;
+}
+
+/* Loading spinner improvements */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Button professional styling */
+button {
+  transition: all 0.2s ease-in-out;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button:focus {
+  outline: none;
+}
+
+/* Custom scrollbar for better UX */
+.move-history::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.move-history::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.move-history::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+.move-history::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Dark mode scrollbar */
+.dark .move-history::-webkit-scrollbar-track,
+.dark .overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .move-history::-webkit-scrollbar-thumb,
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.dark .move-history::-webkit-scrollbar-thumb:hover,
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Form focus styles */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6;
+  border-color: transparent;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.dark .card-hover:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .text-responsive {
+    font-size: 0.875rem;
+  }
+  
+  .p-responsive {
+    padding: 1rem;
+  }
+  
+  .gap-responsive {
+    gap: 0.5rem;
+  }
+}
+
+@media (min-width: 641px) {
+  .text-responsive {
+    font-size: 1rem;
+  }
+  
+  .p-responsive {
+    padding: 1.5rem;
+  }
+  
+  .gap-responsive {
+    gap: 1rem;
+  }
+}
+
+/* Glass morphism effect */
+.glass {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass {
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient backgrounds */
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dark .gradient-bg {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+}
+
+/* Enhanced mobile touch targets */
+@media (max-width: 768px) {
+  button, .chess-square {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

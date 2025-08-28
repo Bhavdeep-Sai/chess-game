@@ -52,7 +52,7 @@ export const authApi = {
 export const gamesApi = {
   getLobby: () => api.get('/games/lobby'),
   createGame: (gameData) => api.post('/games/create', gameData),
-  joinGame: (roomId, joinData) => api.post(`/games/join/${roomId}`, joinData),
+  joinGame: (roomId, joinData = {}) => api.post(`/games/join/${roomId}`, joinData),
   getGame: (roomId, guestId) => api.get(`/games/${roomId}`, { 
     params: guestId ? { guestId } : {} 
   }),

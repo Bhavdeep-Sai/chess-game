@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
+import { FaEye, FaEyeSlash, FaChessKnight, FaUser, FaEnvelope, FaLock, FaGlobe } from 'react-icons/fa';
 
 const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -15,6 +17,7 @@ const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { register, isLoading, error, clearError } = useAuth();
+  const { colors } = useTheme();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,22 +60,40 @@ const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                      passwordsMatch;
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6 card-hover fade-in">
-      <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">Join Chess</h2>
-        <p className="text-gray-600 mt-2">Create your account to start playing</p>
+    <div className={`
+      w-full max-w-lg mx-auto rounded-2xl shadow-2xl p-6 sm:p-8 
+      transition-all duration-300 fade-in
+      ${colors.card.background} ${colors.card.border} border
+      backdrop-blur-sm bg-opacity-95
+    `}>
+      {/* Header with Chess Icon */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-blue-600 mb-4">
+          <FaChessKnight className="w-8 h-8 text-white" />
+        </div>
+        <h2 className={`text-3xl sm:text-4xl font-bold ${colors.text.primary} mb-2`}>
+          Join Chess
+        </h2>
+        <p className={`${colors.text.secondary} text-base sm:text-lg`}>
+          Create your account to start playing
+        </p>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
+        <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg animate-pulse">
+          <div className="flex items-center">
+            <span className="text-red-500 mr-2">⚠️</span>
+            {error}
+          </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Name Fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="firstName" className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+              <FaUser className="inline mr-2" />
               First Name
             </label>
             <input
@@ -82,11 +103,18 @@ const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
               value={formData.firstName}
               onChange={handleChange}
               placeholder="John"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`
+                w-full px-4 py-3 rounded-lg border transition-all duration-200
+                ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                placeholder-gray-400 dark:placeholder-gray-500
+                text-base sm:text-sm
+              `}
             />
           </div>
           <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="lastName" className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+              <FaUser className="inline mr-2" />
               Last Name
             </label>
             <input
@@ -96,13 +124,21 @@ const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
               value={formData.lastName}
               onChange={handleChange}
               placeholder="Doe"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`
+                w-full px-4 py-3 rounded-lg border transition-all duration-200
+                ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                placeholder-gray-400 dark:placeholder-gray-500
+                text-base sm:text-sm
+              `}
             />
           </div>
         </div>
 
+        {/* Username */}
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="username" className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+            <FaUser className="inline mr-2" />
             Username *
           </label>
           <input
@@ -111,15 +147,22 @@ const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
             name="username"
             value={formData.username}
             onChange={handleChange}
-            placeholder="Choose a username"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Choose a unique username"
+            className={`
+              w-full px-4 py-3 rounded-lg border transition-all duration-200
+              ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              placeholder-gray-400 dark:placeholder-gray-500
+              text-base sm:text-sm
+            `}
             required
           />
-          <p className="text-xs text-gray-500 mt-1">3-20 characters, letters, numbers, and underscores only</p>
         </div>
 
+        {/* Email */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+            <FaEnvelope className="inline mr-2" />
             Email *
           </label>
           <input
@@ -128,14 +171,22 @@ const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            placeholder="your.email@example.com"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Enter your email"
+            className={`
+              w-full px-4 py-3 rounded-lg border transition-all duration-200
+              ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              placeholder-gray-400 dark:placeholder-gray-500
+              text-base sm:text-sm
+            `}
             required
           />
         </div>
 
+        {/* Country */}
         <div>
-          <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="country" className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+            <FaGlobe className="inline mr-2" />
             Country
           </label>
           <input
@@ -145,108 +196,133 @@ const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
             value={formData.country}
             onChange={handleChange}
             placeholder="Your country"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`
+              w-full px-4 py-3 rounded-lg border transition-all duration-200
+              ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              placeholder-gray-400 dark:placeholder-gray-500
+              text-base sm:text-sm
+            `}
           />
         </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Password *
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Create a password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              )}
-            </button>
+        {/* Password Fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="password" className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+              <FaLock className="inline mr-2" />
+              Password *
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Create password"
+                className={`
+                  w-full px-4 py-3 pr-12 rounded-lg border transition-all duration-200
+                  ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                  placeholder-gray-400 dark:placeholder-gray-500
+                  text-base sm:text-sm
+                `}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className={`
+                  absolute inset-y-0 right-0 pr-4 flex items-center
+                  ${colors.text.muted} hover:${colors.text.secondary}
+                  transition-colors duration-200
+                `}
+              >
+                {showPassword ? (
+                  <FaEyeSlash className="h-5 w-5" />
+                ) : (
+                  <FaEye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
-        </div>
 
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-            Confirm Password *
-          </label>
-          <div className="relative">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Confirm your password"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 ${
-                formData.confirmPassword && !passwordsMatch 
-                  ? 'border-red-500' 
-                  : 'border-gray-300'
-              }`}
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {showConfirmPassword ? (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              )}
-            </button>
+          <div>
+            <label htmlFor="confirmPassword" className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+              <FaLock className="inline mr-2" />
+              Confirm Password *
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm password"
+                className={`
+                  w-full px-4 py-3 pr-12 rounded-lg border transition-all duration-200
+                  ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                  ${formData.confirmPassword && !passwordsMatch ? 'border-red-500' : ''}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                  placeholder-gray-400 dark:placeholder-gray-500
+                  text-base sm:text-sm
+                `}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className={`
+                  absolute inset-y-0 right-0 pr-4 flex items-center
+                  ${colors.text.muted} hover:${colors.text.secondary}
+                  transition-colors duration-200
+                `}
+              >
+                {showConfirmPassword ? (
+                  <FaEyeSlash className="h-5 w-5" />
+                ) : (
+                  <FaEye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+            {formData.confirmPassword && !passwordsMatch && (
+              <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
+            )}
           </div>
-          {formData.confirmPassword && !passwordsMatch && (
-            <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
-          )}
         </div>
 
         <button
           type="submit"
           disabled={isLoading || !isFormValid}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          className={`
+            w-full py-3 px-4 rounded-lg font-semibold text-white
+            transition-all duration-200 transform
+            ${colors.button.success}
+            hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
+            disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+            focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+            text-base sm:text-sm
+          `}
         >
           {isLoading ? (
             <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
               Creating account...
             </div>
           ) : (
-            'Create Account'
+            '🎯 Create Account'
           )}
         </button>
       </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
+      <div className="mt-8 text-center">
+        <p className={`text-sm ${colors.text.secondary}`}>
           Already have an account?{' '}
           <button
             onClick={onSwitchToLogin}
-            className="text-blue-600 hover:text-blue-500 font-medium"
+            className={`${colors.text.accent} hover:underline font-semibold transition-colors duration-200`}
           >
             Sign in here
           </button>
