@@ -10,9 +10,10 @@ import { gamesApi } from '../services/api';
 import { getLegalMovesWithTypes } from '../utils/chess';
 import { useTheme } from '../hooks/useTheme';
 
-const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeaveGame }) => {
+const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGuest, guestData, onLeaveGame }) => {
   const theme = useTheme();
   const [gameState, setGameState] = useState(null);
+  const [playerColor, setPlayerColor] = useState(initialPlayerColor);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [possibleMoves, setPossibleMoves] = useState([]);
   const [captureMoves, setCaptureMoves] = useState([]);
@@ -101,14 +102,28 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
       const response = await gamesApi.getGame(roomId, isGuest ? guestData.id : null);
       const gameData = response.data.game;
       setGameState(gameData);
+      setPlayerColor(response.data.playerColor); // Update player color from API
       setIsSpectator(!response.data.playerColor);
 
-      // Check if both players are ready AND exist
-      const hasWhitePlayer = gameData.players?.white?.userId || gameData.players?.white?.guestId;
-      const hasBlackPlayer = gameData.players?.black?.userId || gameData.players?.black?.guestId;
+      console.log('API response playerColor:', response.data.playerColor);
+
+      // Check if both players are ready AND exist (check all identification methods)
+      const hasWhitePlayer = gameData.players?.white?.userId || gameData.players?.white?.guestId || gameData.players?.white?.username;
+      const hasBlackPlayer = gameData.players?.black?.userId || gameData.players?.black?.guestId || gameData.players?.black?.username;
       const whiteReady = gameData.players?.white?.isReady || false;
       const blackReady = gameData.players?.black?.isReady || false;
       setBothPlayersReady(hasWhitePlayer && hasBlackPlayer && whiteReady && blackReady);
+
+      console.log('Game state loaded:', {
+        hasWhitePlayer,
+        hasBlackPlayer,
+        whiteReady,
+        blackReady,
+        bothReady: hasWhitePlayer && hasBlackPlayer && whiteReady && blackReady,
+        gameStatus: gameData.gameStatus,
+        whitePlayer: gameData.players?.white,
+        blackPlayer: gameData.players?.black
+      });
 
     } catch (error) {
       console.error('Failed to load game state:', error);
@@ -118,9 +133,26 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
   // Set up socket event listeners
   useEffect(() => {
     const handleGameState = (data) => {
+      console.log('Received game_state:', {
+        playerColor: data.playerColor,
+        isSpectator: data.isSpectator,
+        gameStatus: data.game?.gameStatus,
+        roomId: data.game?.roomId
+      });
+      
       setGameState(data.game);
+      setPlayerColor(data.playerColor); // Update player color from backend
       setIsSpectator(data.isSpectator || false);
       setGameStatus(data.game.gameStatus);
+
+      // Set ready state based on backend data
+      if (data.playerColor && data.game?.players) {
+        const isPlayerReady = data.playerColor === 'white' 
+          ? data.game.players.white?.isReady 
+          : data.game.players.black?.isReady;
+        setIsReady(!!isPlayerReady);
+        console.log('Updated ready state:', { playerColor: data.playerColor, isReady: !!isPlayerReady });
+      }
 
       if (data.game.timeControl) {
         setTimeLeft({
@@ -129,12 +161,23 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
         });
       }
 
-      // Check if both players are ready AND exist
-      const hasWhitePlayer = data.game.players?.white?.userId || data.game.players?.white?.guestId;
-      const hasBlackPlayer = data.game.players?.black?.userId || data.game.players?.black?.guestId;
+      // Check if both players are ready AND exist (check all identification methods)
+      const hasWhitePlayer = data.game.players?.white?.userId || data.game.players?.white?.guestId || data.game.players?.white?.username;
+      const hasBlackPlayer = data.game.players?.black?.userId || data.game.players?.black?.guestId || data.game.players?.black?.username;
       const whiteReady = data.game.players?.white?.isReady || false;
       const blackReady = data.game.players?.black?.isReady || false;
       setBothPlayersReady(hasWhitePlayer && hasBlackPlayer && whiteReady && blackReady);
+
+      console.log('Socket game state updated:', {
+        hasWhitePlayer,
+        hasBlackPlayer,
+        whiteReady,
+        blackReady,
+        bothReady: hasWhitePlayer && hasBlackPlayer && whiteReady && blackReady,
+        gameStatus: data.game.gameStatus,
+        whitePlayer: data.game.players?.white,
+        blackPlayer: data.game.players?.black
+      });
 
       setIsMyTurn(data.game.currentPlayer === playerColor && !data.isSpectator);
       setConnectionStatus('connected');
@@ -294,13 +337,33 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
     loadGameState();
   }, [loadGameState]);
 
-  useEffect(() => {
-    // Emit 'player_ready' if player is not ready and not a spectator
-    if (!isSpectator && roomId && playerColor) {
-      socketService.emit('player_ready', { roomId });
-      setIsReady(true);
-    }
-  }, [isSpectator, roomId, playerColor]);
+  // Removed auto-ready logic - users must manually click Ready
+  // useEffect(() => {
+  //   // Emit 'player_ready' if player is not ready and not a spectator
+  //   console.log('Auto-ready useEffect triggered:', { 
+  //     isSpectator, 
+  //     roomId, 
+  //     playerColor, 
+  //     condition: !isSpectator && roomId && playerColor,
+  //     socketConnected: socketService.socket?.connected 
+  //   });
+    
+  //   if (!isSpectator && roomId && playerColor && socketService.socket?.connected) {
+  //     console.log('Auto-emitting player_ready:', { roomId, playerColor, isSpectator });
+  //     socketService.emit('player_ready', { roomId });
+  //     setIsReady(true);
+  //   } else if (!isSpectator && roomId && playerColor && !socketService.socket?.connected) {
+  //     console.log('Socket not connected, delaying player_ready');
+  //     // Retry after a short delay
+  //     setTimeout(() => {
+  //       if (socketService.socket?.connected) {
+  //         console.log('Retrying auto-emit player_ready:', { roomId, playerColor });
+  //         socketService.emit('player_ready', { roomId });
+  //         setIsReady(true);
+  //       }
+  //     }, 1000);
+  //   }
+  // }, [isSpectator, roomId, playerColor]);
 
   // Timer effect
   useEffect(() => {
@@ -393,6 +456,7 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
   }, [isGuest, guestData, gameState, playerColor, isSpectator]);
 
   const handlePlayerReady = () => {
+    console.log('Manual player ready clicked:', { roomId, playerColor, isSpectator });
     socketService.playerReady(roomId);
     setIsReady(true);
   };
@@ -451,9 +515,9 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
 
     switch (gameStatus) {
       case 'waiting': {
-        // Check if both player slots are filled
-        const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId;
-        const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId;
+        // Check if both player slots are filled (check all identification methods)
+        const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId || gameState?.players?.white?.username;
+        const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId || gameState?.players?.black?.username;
         
         if (!hasWhitePlayer && !hasBlackPlayer) {
           return 'Waiting for players to join...';
@@ -515,7 +579,7 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
         <ThemeToggle />
       </div>
       
-      <div className="flex flex-col lg:flex-row items-start justify-center gap-4 lg:gap-6 py-4 px-5 lg:p-8 min-h-screen w-full mx-auto">
+      <div className="flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-6 py-4 px-5 lg:p-8 min-h-screen w-full mx-auto">
         {/* Game Header - Mobile */}
         <div className="lg:hidden w-full text-center mb-4">
           <h1 className={`text-2xl lg:text-3xl font-bold ${theme.colors.text.primary} mb-2 flex items-center justify-center`}>
@@ -710,8 +774,8 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
               <h2 className={`text-xl lg:text-2xl font-bold ${theme.colors.text.primary} mb-2`}>Waiting for Players</h2>
               <p className={`${theme.colors.text.secondary} mb-4`}>
                 {(() => {
-                  const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId;
-                  const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId;
+                  const hasWhitePlayer = gameState?.players?.white?.userId || gameState?.players?.white?.guestId || gameState?.players?.white?.username;
+                  const hasBlackPlayer = gameState?.players?.black?.userId || gameState?.players?.black?.guestId || gameState?.players?.black?.username;
                   const whiteReady = gameState?.players?.white?.isReady || false;
                   const blackReady = gameState?.players?.black?.isReady || false;
                   
@@ -739,7 +803,7 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
           {(bothPlayersReady || gameStatus === 'active' || gameStatus === 'finished') && (
             <div className="relative w-full mb-5 max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
               {/* Board Labels */}
-              <div className={`absolute -left-3 lg:-left-5 top-0 h-full flex flex-col justify-around ${theme.colors.text.secondary} font-semibold text-sm lg:text-base`}>
+              <div className={`absolute -left-3 sm:-left-5 lg:-left-5 top-0 h-full flex flex-col justify-around ${theme.colors.text.secondary} font-semibold text-sm lg:text-base`}>
                 {(playerColor === 'black' ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1]).map(num => (
                   <div key={num} className="h-10 sm:h-12 md:h-14 lg:h-16 flex items-center">
                     {num}
@@ -749,7 +813,7 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
 
               <div className={`absolute -bottom-6 lg:-bottom-6 -left-1 w-full flex gap-0.5 ${theme.colors.text.secondary} font-semibold text-sm lg:text-base`}>
                 {(playerColor === 'black' ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']).map(letter => (
-                  <div key={letter} className="w-10 sm:w-12 md:w-14 lg:w-16 text-center ">
+                  <div key={letter} className="w-14 sm:w-12 md:w-14 lg:w-16 text-center ">
                     {letter}
                   </div>
                 ))}

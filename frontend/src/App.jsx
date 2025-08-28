@@ -234,23 +234,6 @@ const AppContent = () => {
                   {isAuthenticated ? user?.username?.substring(0, 8) : guestData?.username?.substring(0, 8)}
                 </span>
               </div>
-              
-              {/* Navigation Buttons */}
-              {currentView === 'game' && (
-                <button
-                  onClick={handleLeaveGame}
-                  className={`
-                    text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 rounded-lg 
-                    transition-all duration-200 font-medium
-                    ${colors.button.ghost} ${colors.text.primary}
-                    hover:shadow-md active:scale-95
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
-                  `}
-                >
-                  <span className="hidden sm:inline">← Lobby</span>
-                  <span className="sm:hidden">←</span>
-                </button>
-              )}
 
               {currentView === 'practice' && (
                 <button

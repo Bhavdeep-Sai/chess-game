@@ -244,8 +244,16 @@ const handleConnection = (io) => {
           // Send current game state
           socket.emit('game_state', {
             game: game.getGameState(),
-            playerColor: game.getPlayerColor(socket.userId, socket.guestId),
+            playerColor: game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username),
             isSpectator: false
+          });
+
+          console.log(`Sent reconnect game_state to ${socket.username}:`, {
+            playerColor: game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username),
+            isSpectator: false,
+            userId: socket.userId,
+            guestId: socket.guestId,
+            username: socket.username
           });
 
           // Notify others about reconnection
@@ -367,34 +375,40 @@ const handleConnection = (io) => {
               playerJoined = true;
               console.log(`${socket.username} reconnected as black player in room ${roomId}`);
             }
-          } else if (socket.guestId) {
+          } else if (socket.guestId || socket.isGuest) {
             // For guest users, prioritize exact guestId match first
-            if (game.players.white.guestId === socket.guestId) {
+            if (socket.guestId && game.players.white.guestId === socket.guestId) {
               game.players.white.socketId = socket.id;
               playerJoined = true;
               console.log(`${socket.username} reconnected as white player in room ${roomId} (exact guestId match)`);
-            } else if (game.players.black.guestId === socket.guestId) {
+            } else if (socket.guestId && game.players.black.guestId === socket.guestId) {
               game.players.black.socketId = socket.id;
               playerJoined = true;
               console.log(`${socket.username} reconnected as black player in room ${roomId} (exact guestId match)`);
             }
-            // If no exact guestId match, check for username match (guest reconnection with new ID)
+            // If no exact guestId match, check for username match (guest reconnection with new ID or username-only match)
             else if (game.players.white.isGuest && 
-                     game.players.white.username === socket.username &&
-                     game.players.white.guestId !== socket.guestId) {
-              // Update the guestId for this reconnection
+                     game.players.white.username === socket.username) {
+              // Update the guestId for this reconnection if needed
               game.players.white.socketId = socket.id;
-              game.players.white.guestId = socket.guestId;
+              if (socket.guestId && game.players.white.guestId !== socket.guestId) {
+                game.players.white.guestId = socket.guestId;
+                console.log(`${socket.username} reconnected as white player in room ${roomId} (username match, updated guestId from ${game.players.white.guestId} to ${socket.guestId})`);
+              } else {
+                console.log(`${socket.username} reconnected as white player in room ${roomId} (username match)`);
+              }
               playerJoined = true;
-              console.log(`${socket.username} reconnected as white player in room ${roomId} (username match, updated guestId from ${game.players.white.guestId} to ${socket.guestId})`);
             } else if (game.players.black.isGuest && 
-                       game.players.black.username === socket.username &&
-                       game.players.black.guestId !== socket.guestId) {
-              // Update the guestId for this reconnection
+                       game.players.black.username === socket.username) {
+              // Update the guestId for this reconnection if needed
               game.players.black.socketId = socket.id;
-              game.players.black.guestId = socket.guestId;
+              if (socket.guestId && game.players.black.guestId !== socket.guestId) {
+                game.players.black.guestId = socket.guestId;
+                console.log(`${socket.username} reconnected as black player in room ${roomId} (username match, updated guestId from ${game.players.black.guestId} to ${socket.guestId})`);
+              } else {
+                console.log(`${socket.username} reconnected as black player in room ${roomId} (username match)`);
+              }
               playerJoined = true;
-              console.log(`${socket.username} reconnected as black player in room ${roomId} (username match, updated guestId from ${game.players.black.guestId} to ${socket.guestId})`);
             }
           }
 
@@ -428,18 +442,17 @@ const handleConnection = (io) => {
               wouldBeSelfPlay = (whiteUserId === socket.userId) || (blackUserId === socket.userId);
               console.log(`Auth user ${socket.username} self-play check: wouldBeSelfPlay=${wouldBeSelfPlay}`);
               console.log(`Detailed check - whiteUserId: ${whiteUserId}, blackUserId: ${blackUserId}, socketUserId: ${socket.userId}`);
-            } else if (socket.isGuest && socket.guestId) {
-              // For guest users, only block if the same guestId is in both slots
-              // OR if the same username is in both slots (very unlikely but possible)
-              const sameGuestIdInWhite = game.players.white.guestId === socket.guestId;
-              const sameGuestIdInBlack = game.players.black.guestId === socket.guestId;
+            } else if (socket.isGuest) {
+              // For guest users, check for both guestId and username matches
+              const sameGuestIdInWhite = socket.guestId && game.players.white.guestId === socket.guestId;
+              const sameGuestIdInBlack = socket.guestId && game.players.black.guestId === socket.guestId;
               const sameUsernameInWhite = game.players.white.isGuest && game.players.white.username === socket.username;
               const sameUsernameInBlack = game.players.black.isGuest && game.players.black.username === socket.username;
-              const sameUsernameInBothSlots = sameUsernameInWhite && sameUsernameInBlack;
               
-              wouldBeSelfPlay = sameGuestIdInWhite || sameGuestIdInBlack || sameUsernameInBothSlots;
+              // Block only if there's a clear duplicate (same guestId in either slot OR same username in both slots)
+              wouldBeSelfPlay = sameGuestIdInWhite || sameGuestIdInBlack || (sameUsernameInWhite && sameUsernameInBlack);
               console.log(`Guest user ${socket.username} self-play check: wouldBeSelfPlay=${wouldBeSelfPlay}`);
-              console.log(`Detailed check - guestId in white: ${sameGuestIdInWhite}, guestId in black: ${sameGuestIdInBlack}, username in white: ${sameUsernameInWhite}, username in black: ${sameUsernameInBlack}, username in both: ${sameUsernameInBothSlots}`);
+              console.log(`Detailed check - guestId in white: ${sameGuestIdInWhite}, guestId in black: ${sameGuestIdInBlack}, username in white: ${sameUsernameInWhite}, username in black: ${sameUsernameInBlack}`);
               console.log(`Game state - white: {userId: ${game.players.white.userId}, guestId: ${game.players.white.guestId}, username: ${game.players.white.username}, isGuest: ${game.players.white.isGuest}}, black: {userId: ${game.players.black.userId}, guestId: ${game.players.black.guestId}, username: ${game.players.black.username}, isGuest: ${game.players.black.isGuest}}`);
             }
 
@@ -449,7 +462,7 @@ const handleConnection = (io) => {
               return;
             }
 
-            if (!game.players.white.userId && !game.players.white.guestId) {
+            if (!game.players.white.userId && !game.players.white.guestId && !game.players.white.username) {
               // Join as white
               game.players.white = {
                 userId: socket.userId || null,
@@ -461,7 +474,7 @@ const handleConnection = (io) => {
               };
               playerJoined = true;
               console.log(`${socket.username} joined as white player in room ${roomId}`);
-            } else if (!game.players.black.userId && !game.players.black.guestId) {
+            } else if (!game.players.black.userId && !game.players.black.guestId && !game.players.black.username) {
               // Join as black
               game.players.black = {
                 userId: socket.userId || null,
@@ -499,8 +512,16 @@ const handleConnection = (io) => {
         // Send game state to the user
         socket.emit('game_state', {
           game: game.getGameState(),
-          playerColor: game.getPlayerColor(socket.userId, socket.guestId),
+          playerColor: game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username),
           isSpectator: spectate
+        });
+
+        console.log(`Sent game_state to ${socket.username}:`, {
+          playerColor: game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username),
+          isSpectator: spectate,
+          userId: socket.userId,
+          guestId: socket.guestId,
+          username: socket.username
         });
 
         // Notify others in the room
@@ -523,23 +544,35 @@ const handleConnection = (io) => {
       try {
         const { roomId } = data;
         
+        console.log(`Received player_ready event from ${socket.username} (${socket.isGuest ? 'Guest' : 'User'}) for room ${roomId}`);
+        
         const game = await Game.findOne({ roomId });
         if (!game) {
           socket.emit('error', { message: 'Game not found' });
           return;
         }
 
-        // Use the existing getPlayerColor method for consistency
-        const playerColor = game.getPlayerColor(socket.userId, socket.guestId);
+        // Use the existing getPlayerColor method for consistency, with fallback
+        const playerColor = game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username);
+        
+        console.log(`Player color identification result for ${socket.username}:`, {
+          playerColor,
+          socketUserId: socket.userId,
+          socketGuestId: socket.guestId,
+          socketUsername: socket.username
+        });
         
         if (!playerColor) {
           console.log(`Player identification failed for ${socket.username}:`, {
             socketUserId: socket.userId,
             socketGuestId: socket.guestId,
+            socketUsername: socket.username,
             whiteUserId: game.players.white.userId?.toString(),
             whiteGuestId: game.players.white.guestId,
+            whiteUsername: game.players.white.username,
             blackUserId: game.players.black.userId?.toString(),
-            blackGuestId: game.players.black.guestId
+            blackGuestId: game.players.black.guestId,
+            blackUsername: game.players.black.username
           });
           socket.emit('error', { message: 'You are not a player in this game' });
           return;
@@ -554,11 +587,23 @@ const handleConnection = (io) => {
 
         console.log(`Player ${socket.username} (${playerColor}) is ready in room ${roomId}`);
 
-        // Check if both players are ready and exist
-        const whiteReady = game.players.white.isReady && 
-                          (game.players.white.userId || game.players.white.guestId);
-        const blackReady = game.players.black.isReady && 
-                          (game.players.black.userId || game.players.black.guestId);
+        // Check if both players are ready and exist (check all identification methods)
+        const whiteExists = !!(game.players.white.userId || game.players.white.guestId || game.players.white.username);
+        const blackExists = !!(game.players.black.userId || game.players.black.guestId || game.players.black.username);
+        const whiteReady = game.players.white.isReady && whiteExists;
+        const blackReady = game.players.black.isReady && blackExists;
+
+        console.log(`Ready status check in room ${roomId}:`, {
+          whitePlayer: game.players.white.username,
+          whiteReady: game.players.white.isReady,
+          whiteExists: whiteExists,
+          blackPlayer: game.players.black.username,
+          blackReady: game.players.black.isReady,
+          blackExists: blackExists,
+          finalWhiteReady: whiteReady,
+          finalBlackReady: blackReady,
+          gameStatus: game.gameStatus
+        });
 
         if (whiteReady && blackReady && game.gameStatus === 'waiting') {
           game.gameStatus = 'active';

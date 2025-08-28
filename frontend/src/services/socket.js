@@ -152,6 +152,12 @@ class SocketService {
   }
 
   emit(event, data) {
+    console.log(`Attempting to emit event: ${event}`, { 
+      connected: this.socket?.connected, 
+      hasSocket: !!this.socket,
+      data 
+    });
+    
     if (!this.socket?.connected) {
       console.warn('Socket not connected, cannot emit event:', event);
       // Store failed emissions for retry
@@ -162,6 +168,7 @@ class SocketService {
       return false;
     }
 
+    console.log(`Emitting event: ${event}`, data);
     this.socket.emit(event, data);
     return true;
   }

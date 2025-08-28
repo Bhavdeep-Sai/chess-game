@@ -9,8 +9,8 @@ const { generateRoomId } = require('../utils/helpers');
 router.get('/lobby', optionalAuth, async (req, res) => {
   try {
     const games = await Game.find({
-      gameStatus: 'waiting',
-      'settings.isPrivate': false
+      gameStatus: 'waiting'
+      // Removed the private filter to show all waiting games
     })
     .populate('players.white.userId', 'username stats.rating')
     .populate('players.black.userId', 'username stats.rating')
@@ -41,11 +41,13 @@ router.get('/lobby', optionalAuth, async (req, res) => {
       timeControl: game.timeControl,
       settings: {
         allowSpectators: game.settings.allowSpectators,
-        hasPassword: !!game.settings.password
+        hasPassword: !!game.settings.password,
+        isPrivate: game.settings.isPrivate
       },
       spectatorCount: game.spectators.length,
       createdBy: game.createdBy?.username,
-      createdAt: game.createdAt
+      createdAt: game.createdAt,
+      status: game.gameStatus
     }));
 
     res.json({ games: gameList });
@@ -245,9 +247,12 @@ router.post('/join/:roomId', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'You cannot play against yourself' });
     }
 
-    // Check if there's space for players
-    if (game.players.white.userId || game.players.white.guestId) {
-      if (game.players.black.userId || game.players.black.guestId) {
+    // Check if there's space for players (use all identification methods)
+    const hasWhitePlayer = game.players.white.userId || game.players.white.guestId || game.players.white.username;
+    const hasBlackPlayer = game.players.black.userId || game.players.black.guestId || game.players.black.username;
+    
+    if (hasWhitePlayer) {
+      if (hasBlackPlayer) {
         return res.status(400).json({ error: 'Game room is full' });
       }
       // Join as black
@@ -255,7 +260,8 @@ router.post('/join/:roomId', optionalAuth, async (req, res) => {
         game.players.black = {
           userId: req.user._id,
           username: req.user.username,
-          isGuest: false
+          isGuest: false,
+          isReady: false
         };
       } else if (isGuest && guestUsername) {
         const guestId = require('../utils/helpers').generateGuestId();
@@ -263,7 +269,8 @@ router.post('/join/:roomId', optionalAuth, async (req, res) => {
           userId: null,
           username: guestUsername,
           isGuest: true,
-          guestId: guestId
+          guestId: guestId,
+          isReady: false
         };
       }
     } else {
@@ -272,7 +279,8 @@ router.post('/join/:roomId', optionalAuth, async (req, res) => {
         game.players.white = {
           userId: req.user._id,
           username: req.user.username,
-          isGuest: false
+          isGuest: false,
+          isReady: false
         };
       } else if (isGuest && guestUsername) {
         const guestId = require('../utils/helpers').generateGuestId();
@@ -280,7 +288,8 @@ router.post('/join/:roomId', optionalAuth, async (req, res) => {
           userId: null,
           username: guestUsername,
           isGuest: true,
-          guestId: guestId
+          guestId: guestId,
+          isReady: false
         };
       }
     }

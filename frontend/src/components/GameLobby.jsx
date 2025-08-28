@@ -9,7 +9,9 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
   const [error, setError] = useState(null);
   const [selectedTimeControl, setSelectedTimeControl] = useState('10+0');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showPrivateForm, setShowPrivateForm] = useState(false);
   const [joinRoomId, setJoinRoomId] = useState('');
+  const [privateRoomPassword, setPrivateRoomPassword] = useState('');
 
   const { user } = useAuth();
   const { colors } = useTheme();
@@ -72,9 +74,59 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
     }
   };
 
-  const handleJoinGame = async (roomId) => {
+  const handleCreatePrivateGame = async () => {
+    try {
+      const timeControls = {
+        '1+0': { initialTime: 60000, increment: 0 },
+        '3+0': { initialTime: 180000, increment: 0 },
+        '5+0': { initialTime: 300000, increment: 0 },
+        '10+0': { initialTime: 600000, increment: 0 },
+        '15+10': { initialTime: 900000, increment: 10000 },
+        '30+0': { initialTime: 1800000, increment: 0 },
+      };
+
+      const gameData = {
+        timeControl: timeControls[selectedTimeControl],
+        settings: {
+          isPrivate: true,
+          password: privateRoomPassword || null,
+          allowSpectators: true,
+        }
+      };
+
+      // Add guest data if playing as guest
+      if (isGuest && guestData) {
+        gameData.isGuest = true;
+        gameData.guestUsername = guestData.username;
+        console.log('Creating private game as guest:', guestData);
+      } else {
+        console.log('Creating private game as authenticated user');
+      }
+
+      console.log('Private game data being sent:', gameData);
+      const response = await gamesApi.createGame(gameData);
+      console.log('Create private game response:', response.data);
+      
+      // Show the room ID to user and close form
+      alert(`Private room created! Room ID: ${response.data.roomId}${privateRoomPassword ? `\nPassword: ${privateRoomPassword}` : ''}\n\nShare this room ID with your friend to join.`);
+      
+      setShowPrivateForm(false);
+      setPrivateRoomPassword('');
+      onCreateGame(response.data.roomId);
+    } catch (err) {
+      setError('Failed to create private room');
+      console.error('Create private game error:', err.response?.data || err.message);
+    }
+  };
+
+  const handleJoinGame = async (roomId, password = null) => {
     try {
       const joinData = {};
+      
+      // Add password if provided
+      if (password) {
+        joinData.password = password;
+      }
       
       // Add guest data if playing as guest
       if (isGuest && guestData) {
@@ -90,8 +142,16 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
       console.log('Join game response:', response.data);
       onJoinGame(roomId, response.data.playerColor);
     } catch (err) {
-      setError('Failed to join game');
-      console.error('Join game error:', err.response?.data || err.message);
+      // If error is due to incorrect password, prompt for password
+      if (err.response?.status === 401 && err.response?.data?.error === 'Incorrect room password') {
+        const password = prompt('This room requires a password:');
+        if (password) {
+          return handleJoinGame(roomId, password);
+        }
+      } else {
+        setError('Failed to join game');
+        console.error('Join game error:', err.response?.data || err.message);
+      }
     }
   };
 
@@ -99,7 +159,8 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
     const currentUsername = isGuest ? guestData.username : user?.username;
     const availableGames = games.filter(game => {
       if (game.status !== 'waiting') return false;
-      if (game.settings.hasPassword) return false;
+      if (game.settings?.isPrivate) return false; // Skip private rooms for random join
+      if (game.settings?.hasPassword) return false;
       if (game.players.white && game.players.white.username === currentUsername) return false;
       return true;
     });
@@ -177,7 +238,7 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mb-8 sm:mb-12">
           <button
             onClick={handleJoinRandom}
             className={`
@@ -204,8 +265,23 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
             `}
           >
             <span>🏠</span>
-            <span className="hidden sm:inline">Create Room</span>
-            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">Public Room</span>
+            <span className="sm:hidden">Public</span>
+          </button>
+
+          <button
+            onClick={() => setShowPrivateForm(!showPrivateForm)}
+            className={`
+              bg-orange-600 hover:bg-orange-700 text-white py-4 px-6 rounded-xl 
+              transition-all duration-200 font-semibold text-base sm:text-lg
+              hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
+              focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2
+              flex items-center justify-center gap-2
+            `}
+          >
+            <span>🔒</span>
+            <span className="hidden sm:inline">Private Room</span>
+            <span className="sm:hidden">Private</span>
           </button>
 
           <button
@@ -239,7 +315,11 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
               `}
             />
             <button
-              onClick={() => joinRoomId && handleJoinGame(joinRoomId)}
+              onClick={() => {
+                if (joinRoomId) {
+                  handleJoinGame(joinRoomId);
+                }
+              }}
               disabled={!joinRoomId.trim()}
               className={`
                 absolute right-2 top-1/2 transform -translate-y-1/2
@@ -315,6 +395,87 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
           </div>
         )}
 
+        {/* Create Private Game Form */}
+        {showPrivateForm && (
+          <div className={`${colors.card.background} rounded-2xl shadow-xl p-6 sm:p-8 mb-8 sm:mb-12 border ${colors.card.border} fade-in`}>
+            <h3 className={`text-xl sm:text-2xl font-bold ${colors.text.primary} mb-6`}>🔒 Create Private Room</h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+                  ⏱️ Time Control
+                </label>
+                <select
+                  value={selectedTimeControl}
+                  onChange={(e) => setSelectedTimeControl(e.target.value)}
+                  className={`
+                    w-full px-4 py-3 rounded-lg border transition-all duration-200
+                    ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                  `}
+                >
+                  <option value="1+0">1 minute</option>
+                  <option value="3+0">3 minutes</option>
+                  <option value="5+0">5 minutes</option>
+                  <option value="10+0">10 minutes</option>
+                  <option value="15+10">15+10</option>
+                  <option value="30+0">30 minutes</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-semibold ${colors.text.primary} mb-2`}>
+                  🔐 Room Password (Optional)
+                </label>
+                <input
+                  type="password"
+                  value={privateRoomPassword}
+                  onChange={(e) => setPrivateRoomPassword(e.target.value)}
+                  placeholder="Leave empty for no password"
+                  className={`
+                    w-full px-4 py-3 rounded-lg border transition-all duration-200
+                    ${colors.card.background} ${colors.border.primary} ${colors.text.primary}
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                    placeholder-gray-400 dark:placeholder-gray-500
+                  `}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={() => {
+                  handleCreatePrivateGame();
+                }}
+                className={`
+                  flex-1 py-3 px-6 rounded-lg font-semibold text-white
+                  transition-all duration-200 transform
+                  bg-orange-600 hover:bg-orange-700
+                  hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]
+                  focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2
+                `}
+              >
+                🔒 Create Private Room
+              </button>
+              <button
+                onClick={() => {
+                  setShowPrivateForm(false);
+                  setPrivateRoomPassword('');
+                }}
+                className={`
+                  px-6 py-3 rounded-lg font-semibold
+                  transition-all duration-200 transform
+                  ${colors.button.ghost} ${colors.text.primary}
+                  hover:shadow-md active:scale-[0.98]
+                  focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+                `}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Active Games */}
         <div className={`${colors.card.background} rounded-2xl shadow-xl p-6 sm:p-8 border ${colors.card.border}`}>
           <h3 className={`text-xl sm:text-2xl font-bold ${colors.text.primary} mb-6 flex items-center gap-2`}>
@@ -341,9 +502,21 @@ const GameLobby = ({ onJoinGame, onCreateGame, onPlayPractice, isGuest, guestDat
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <p className={`font-mono text-sm ${colors.text.muted}`}>
-                        Room: {game.roomId}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`font-mono text-sm ${colors.text.muted}`}>
+                          Room: {game.roomId}
+                        </p>
+                        {game.settings?.isPrivate && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                            🔒 Private
+                          </span>
+                        )}
+                        {game.settings?.hasPassword && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                            🔐 Password
+                          </span>
+                        )}
+                      </div>
                       <p className={`text-lg font-semibold ${colors.text.primary}`}>
                         {game.timeControl ? `${Math.floor(game.timeControl.initialTime / 60000)}+${Math.floor(game.timeControl.increment / 1000)}` : 'Custom'}
                       </p>

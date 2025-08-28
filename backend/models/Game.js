@@ -255,4 +255,19 @@ gameSchema.methods.getPlayerColor = function(userId, guestId) {
   return null;
 };
 
+// Method to get player color with fallback to username check
+gameSchema.methods.getPlayerColorWithFallback = function(userId, guestId, username) {
+  // Try the standard method first
+  const color = this.getPlayerColor(userId, guestId);
+  if (color) return color;
+  
+  // Fallback to username check for edge cases
+  if (username) {
+    if (this.players.white.username === username) return 'white';
+    if (this.players.black.username === username) return 'black';
+  }
+  
+  return null;
+};
+
 module.exports = mongoose.model('Game', gameSchema);
