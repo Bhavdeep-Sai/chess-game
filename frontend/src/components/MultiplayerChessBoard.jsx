@@ -47,7 +47,8 @@ const MultiplayerChessBoard = ({ roomId, playerColor, isGuest, guestData, onLeav
       // Join room once connected
       if (roomId) {
         console.log('Joining room:', roomId);
-        socketService.joinRoom(roomId, isSpectator);
+        // Always join as player unless explicitly spectating
+        socketService.joinRoom(roomId, false);
       }
     };
 
