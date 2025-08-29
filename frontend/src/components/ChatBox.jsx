@@ -7,10 +7,14 @@ const ChatBox = ({ messages, onSendMessage, disabled = false, currentUsername })
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new user messages arrive (not system messages)
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      // Only auto-scroll for non-system messages (user chat messages)
+      if (!lastMessage.isSystem) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   }, [messages]);
 

@@ -205,8 +205,8 @@ class SocketService {
     this.emit('player_ready', { roomId });
   }
 
-  makeMove(roomId, from, to) {
-    this.emit('make_move', { roomId, from, to });
+  makeMove(roomId, from, to, moveStartTime = null) {
+    this.emit('make_move', { roomId, from, to, moveStartTime });
   }
 
   promotePawn(roomId, from, to, promotion) {

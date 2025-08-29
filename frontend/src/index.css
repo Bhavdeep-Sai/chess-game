@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Import chess animations */
+@import url('./components/animations.css');
+
 /* Root variables for theme support */
 :root {
   --chess-light-square: #f0d9b5;

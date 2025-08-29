@@ -11,7 +11,8 @@ const Square = ({
   isInCheck, 
   onClick, 
   row, 
-  col 
+  col,
+  isAnimating = false 
 }) => {
   const theme = useTheme();
   
@@ -39,6 +40,11 @@ const Square = ({
     if (isInCheck) {
       classes += `check-animation animate-pulse ${theme.colors.chess.check}`;
     }
+
+    // Animation state
+    if (isAnimating) {
+      classes += ' animate-pulse scale-105';
+    }
     
     return classes;
   };
@@ -65,12 +71,12 @@ const Square = ({
       
       {/* Valid move indicator dot for all moves */}
       {(isValidMove || isCapture) && !piece && (
-        <div className={`absolute w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 ${theme.colors.chess.possibleMove} rounded-full opacity-70 move-indicator shadow-lg`}></div>
+        <div className={`absolute w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 ${theme.colors.chess.possibleMove} rounded-full opacity-70 move-indicator shadow-lg animate-pulse`}></div>
       )}
       
       {/* Move indicator for pieces that can be captured or moved to */}
       {(isValidMove || isCapture) && piece && (
-        <div className={`absolute inset-0 border-2 ${theme.colors.chess.capture} move-indicator shadow-lg`}></div>
+        <div className={`absolute inset-0 border-3 border-red-400`}></div>
       )}
       
     </div>

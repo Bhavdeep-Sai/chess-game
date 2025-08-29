@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Square from './Square';
 import GameInfo from './GameInfo';
 import ChatBox from './ChatBox';
+import MoveHistory from './MoveHistory';
 import PromotionModal from './PromotionModal';
 import CapturedPieces from './CapturedPieces';
 import ThemeToggle from './ThemeToggle';
@@ -28,6 +29,9 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
   const [promotionData, setPromotionData] = useState(null);
   const [bothPlayersReady, setBothPlayersReady] = useState(false);
   const [capturedPieces, setCapturedPieces] = useState({ white: [], black: [] });
+  const [moveStartTime, setMoveStartTime] = useState(null);
+  const [lastMoveTime, setLastMoveTime] = useState(null);
+  const [lastMove, setLastMove] = useState(null);
 
   // Initialize socket connection
   useEffect(() => {
@@ -97,6 +101,38 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
       setCapturedPieces(newCapturedPieces);
     }
   }, [gameState?.moves, calculateCapturedPieces]);
+
+  // Update isMyTurn when gameState or playerColor changes
+  useEffect(() => {
+    if (gameState && playerColor && !isSpectator) {
+      const myTurn = gameState.currentPlayer === playerColor;
+      console.log('Turn calculation:', {
+        currentPlayer: gameState.currentPlayer,
+        playerColor,
+        isSpectator,
+        myTurn
+      });
+      setIsMyTurn(myTurn);
+    } else {
+      console.log('Turn calculation failed:', {
+        hasGameState: !!gameState,
+        playerColor,
+        isSpectator,
+        currentPlayer: gameState?.currentPlayer
+      });
+      setIsMyTurn(false);
+    }
+  }, [gameState, playerColor, isSpectator]);
+
+  // Debug effect to track playerColor changes
+  useEffect(() => {
+    console.log('PlayerColor changed:', {
+      newPlayerColor: playerColor,
+      gameState: !!gameState,
+      currentPlayer: gameState?.currentPlayer,
+      isSpectator
+    });
+  }, [playerColor, gameState, isSpectator]);
   const loadGameState = useCallback(async () => {
     try {
       const response = await gamesApi.getGame(roomId, isGuest ? guestData.id : null);
@@ -133,14 +169,23 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
   // Set up socket event listeners
   useEffect(() => {
     const handleGameState = (data) => {
+      console.log('Received game_state event - RAW DATA:', data);
+      console.log('Current state before update:', {
+        currentPlayerColor: playerColor,
+        currentIsSpectator: isSpectator,
+        currentGameStatus: gameStatus
+      });
+      
       console.log('Received game_state:', {
         playerColor: data.playerColor,
         isSpectator: data.isSpectator,
         gameStatus: data.game?.gameStatus,
-        roomId: data.game?.roomId
+        roomId: data.game?.roomId,
+        currentPlayer: data.game?.currentPlayer
       });
       
       setGameState(data.game);
+      console.log('Setting playerColor to:', data.playerColor);
       setPlayerColor(data.playerColor); // Update player color from backend
       setIsSpectator(data.isSpectator || false);
       setGameStatus(data.game.gameStatus);
@@ -176,14 +221,23 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
         bothReady: hasWhitePlayer && hasBlackPlayer && whiteReady && blackReady,
         gameStatus: data.game.gameStatus,
         whitePlayer: data.game.players?.white,
-        blackPlayer: data.game.players?.black
+        blackPlayer: data.game.players?.black,
+        currentPlayer: data.game.currentPlayer,
+        myTurn: data.game.currentPlayer === data.playerColor && !data.isSpectator
       });
 
-      setIsMyTurn(data.game.currentPlayer === playerColor && !data.isSpectator);
+      setIsMyTurn(data.game.currentPlayer === data.playerColor && !data.isSpectator);
       setConnectionStatus('connected');
     };
 
     const handleMoveMade = (data) => {
+      console.log('Move made received:', {
+        currentPlayer: data.currentPlayer,
+        playerColor: playerColor,
+        isSpectator: isSpectator,
+        shouldBeMyTurn: data.currentPlayer === playerColor && !isSpectator
+      });
+      
       setGameState(prev => ({
         ...prev,
         board: data.board,
@@ -198,6 +252,17 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
       setCaptureMoves([]);
       setIsMyTurn(data.currentPlayer === playerColor && !isSpectator);
       setIsInCheck(data.isCheck && data.currentPlayer === playerColor);
+      
+      // Track last move for highlighting
+      if (data.move) {
+        setLastMove(data.move);
+      }
+
+      // Store move time if we calculated it
+      if (data.move && lastMoveTime) {
+        data.move.moveTime = lastMoveTime;
+        setLastMoveTime(null); // Reset for next move
+      }
 
       if (data.gameStatus === 'finished') {
         setGameStatus('finished');
@@ -254,7 +319,6 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
     };
 
     const handleGameStarted = () => {
-      console.log('Game started!');
       setGameStatus('active');
     };
 
@@ -324,7 +388,7 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
       socketService.off('game_ended', handleGameEnded);
       socketService.off('error', handleError);
     };
-  }, [playerColor, isSpectator, roomId, loadGameState, gameState]);
+  }, [playerColor, isSpectator, roomId, loadGameState, gameState, gameStatus, lastMoveTime]);
 
   // Join the game room - removed as it's now handled in connection effect
   // useEffect(() => {
@@ -384,8 +448,50 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
     return () => clearInterval(interval);
   }, [gameStatus, gameState]);
 
+  // Track turn start time for move timing
+  useEffect(() => {
+    if (isMyTurn && gameStatus === 'active') {
+      setMoveStartTime(Date.now());
+    }
+  }, [isMyTurn, gameStatus]);
+
+  // Emergency fallback to set playerColor if it's undefined but we have gameState
+  useEffect(() => {
+    if (!playerColor && gameState && (isGuest && guestData)) {
+      console.log('Emergency playerColor detection:', {
+        guestId: guestData.id,
+        username: guestData.username,
+        whitePlayer: gameState.players?.white,
+        blackPlayer: gameState.players?.black
+      });
+
+      // Try to match by guestId or username
+      if (gameState.players?.white?.guestId === guestData.id || 
+          gameState.players?.white?.username === guestData.username) {
+        console.log('Emergency setting playerColor to white');
+        setPlayerColor('white');
+      } else if (gameState.players?.black?.guestId === guestData.id || 
+                gameState.players?.black?.username === guestData.username) {
+        console.log('Emergency setting playerColor to black');
+        setPlayerColor('black');
+      }
+    }
+  }, [playerColor, gameState, isGuest, guestData]);
+
   const handleSquareClick = useCallback((row, col) => {
-    if (!isMyTurn || gameStatus !== 'active') return;
+    console.log('Square clicked:', {
+      row, col, 
+      isMyTurn, 
+      gameStatus, 
+      playerColor, 
+      currentPlayer: gameState?.currentPlayer,
+      piece: gameState?.board?.[row]?.[col]
+    });
+    
+    if (!isMyTurn || gameStatus !== 'active') {
+      console.log('Move blocked:', { isMyTurn, gameStatus });
+      return;
+    }
 
     const piece = gameState?.board?.[row]?.[col];
 
@@ -424,9 +530,13 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
       return;
     }
 
+    // Calculate move time
+    const moveTime = moveStartTime ? Date.now() - moveStartTime : 0;
+    setLastMoveTime(moveTime);
+
     // Try to make a move
-    socketService.makeMove(roomId, { row: fromRow, col: fromCol }, { row, col });
-  }, [isMyTurn, gameStatus, gameState, selectedSquare, playerColor, roomId]);
+    socketService.makeMove(roomId, { row: fromRow, col: fromCol }, { row, col }, moveStartTime);
+  }, [isMyTurn, gameStatus, gameState, selectedSquare, playerColor, roomId, moveStartTime]);
 
   const handleLeaveGame = () => {
     // Leave the room through socket
@@ -500,6 +610,12 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
   const isCaptureSquare = useCallback((row, col) => {
     return captureMoves.some(([moveRow, moveCol]) => moveRow === row && moveCol === col);
   }, [captureMoves]);
+
+  const isLastMoveSquare = useCallback((row, col) => {
+    if (!lastMove) return false;
+    return (lastMove.from.row === row && lastMove.from.col === col) ||
+           (lastMove.to.row === row && lastMove.to.col === col);
+  }, [lastMove]);
 
   const formatTime = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -822,13 +938,15 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
               {/* Main Board */}
               <div className={`border-2 md:border-10 border-gray-800 bg-gray-800 rounded-lg shadow-2xl transition-colors duration-300 overflow-hidden inline-block`}>
                 <div className="grid grid-cols-8 gap-0 leading-none" style={{ lineHeight: 0 }}>
-                  {(gameState.board || []).map((row, rowIndex) =>
-                    row.map((piece, colIndex) => {
+                  {Array.from({ length: 8 }, (_, rowIndex) =>
+                    Array.from({ length: 8 }, (_, colIndex) => {
+                      // Calculate the actual board coordinates based on player color
                       const actualRow = playerColor === 'black' ? 7 - rowIndex : rowIndex;
                       const actualCol = playerColor === 'black' ? 7 - colIndex : colIndex;
-                      const actualPiece = gameState.board[actualRow][actualCol];
+                      const actualPiece = gameState.board?.[actualRow]?.[actualCol];
 
-                      const isLight = (rowIndex + colIndex) % 2 === 0;
+                      // Calculate square color (alternating pattern)
+                      const isLight = (actualRow + actualCol) % 2 === 0;
 
                       return (
                         <Square
@@ -839,6 +957,7 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
                           isValidMove={isValidMoveSquare(actualRow, actualCol)}
                           isCapture={isCaptureSquare(actualRow, actualCol)}
                           isInCheck={isKingInCheck(actualRow, actualCol)}
+                          isLastMove={isLastMoveSquare(actualRow, actualCol)}
                           onClick={() => handleSquareClick(actualRow, actualCol)}
                           row={rowIndex}
                           col={colIndex}
@@ -852,8 +971,14 @@ const MultiplayerChessBoard = ({ roomId, playerColor: initialPlayerColor, isGues
           )}
         </div>
 
-        {/* Right Panel - Chat Box */}
+        {/* Right Panel - Move History and Chat Box */}
         <div className="order-3 lg:order-3 w-full my-auto lg:w-80 flex-shrink-0">
+          {/* Move History - Shows above chat */}
+          <MoveHistory 
+            moves={gameState?.moves || []}
+            currentPlayer={gameState?.currentPlayer}
+          />
+          
           {/* Chat Box - Always visible on desktop, below board on mobile */}
           <div className="lg:block">
             <ChatBox

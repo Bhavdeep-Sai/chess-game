@@ -1,0 +1,172 @@
+/* Chess board animations */
+.chess-piece {
+  transition: transform 0.2s ease-in-out;
+}
+
+.chess-piece:hover {
+  transform: scale(1.1);
+}
+
+.chess-square {
+  transition: all 0.2s ease-in-out;
+}
+
+.chess-square:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.move-indicator {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.check-animation {
+  animation: checkPulse 1s ease-in-out infinite;
+}
+
+@keyframes checkPulse {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.2);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Smooth piece movement when making moves */
+.piece-move-animation {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Board flip animation for different players */
+.board-flip {
+  transition: transform 0.5s ease-in-out;
+}
+
+/* Highlight last move */
+.last-move-from,
+.last-move-to {
+  position: relative;
+}
+
+.last-move-from::after,
+.last-move-to::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 193, 7, 0.3);
+  border: 2px solid rgba(255, 193, 7, 0.6);
+  pointer-events: none;
+  animation: lastMoveFade 3s ease-out forwards;
+}
+
+@keyframes lastMoveFade {
+  0% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Captured piece animation */
+.piece-captured {
+  animation: capturedPiece 0.5s ease-out forwards;
+}
+
+@keyframes capturedPiece {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+/* Loading spinner for game states */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Chat message animations */
+.chat-message-enter {
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Move history in chat special styling */
+.move-message {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-left: 3px solid rgba(59, 130, 246, 0.5);
+}
+
+/* Player turn indicator */
+.player-turn-indicator {
+  animation: turnPulse 2s ease-in-out infinite;
+}
+
+@keyframes turnPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+}
+
+/* Responsive animations - reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .chess-piece,
+  .chess-square,
+  .move-indicator,
+  .piece-move-animation,
+  .board-flip {
+    transition: none;
+    animation: none;
+  }
+  
+  .check-animation {
+    animation: none;
+    background-color: rgba(239, 68, 68, 0.3) !important;
+  }
+}

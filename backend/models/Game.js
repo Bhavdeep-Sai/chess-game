@@ -82,6 +82,10 @@ const gameSchema = new mongoose.Schema({
     piece: Object,
     captured: Object,
     notation: String,
+    moveTime: {
+      type: Number,
+      default: 0
+    },
     timestamp: {
       type: Date,
       default: Date.now
@@ -232,6 +236,13 @@ gameSchema.methods.isPlayer = function(userId, guestId) {
 
 // Method to get player color
 gameSchema.methods.getPlayerColor = function(userId, guestId) {
+  console.log('getPlayerColor called with:', {
+    userId,
+    guestId,
+    whitePlayer: this.players.white,
+    blackPlayer: this.players.black
+  });
+
   // For authenticated users, check by userId
   if (userId) {
     // Handle both populated and non-populated userId fields
@@ -242,12 +253,28 @@ gameSchema.methods.getPlayerColor = function(userId, guestId) {
       this.players.black.userId._id.toString() : 
       this.players.black.userId?.toString();
       
+    console.log('User ID comparison:', {
+      userId: userId.toString(),
+      whiteUserId,
+      blackUserId,
+      whiteMatch: whiteUserId === userId.toString(),
+      blackMatch: blackUserId === userId.toString()
+    });
+
     if (whiteUserId === userId.toString()) return 'white';
     if (blackUserId === userId.toString()) return 'black';
   }
   
   // For guest users, check by guestId
   if (guestId) {
+    console.log('Guest ID comparison:', {
+      guestId,
+      whiteGuestId: this.players.white.guestId,
+      blackGuestId: this.players.black.guestId,
+      whiteMatch: this.players.white.guestId === guestId,
+      blackMatch: this.players.black.guestId === guestId
+    });
+
     if (this.players.white.guestId === guestId) return 'white';
     if (this.players.black.guestId === guestId) return 'black';
   }
@@ -257,16 +284,34 @@ gameSchema.methods.getPlayerColor = function(userId, guestId) {
 
 // Method to get player color with fallback to username check
 gameSchema.methods.getPlayerColorWithFallback = function(userId, guestId, username) {
+  console.log('getPlayerColorWithFallback called with:', {
+    userId,
+    guestId,
+    username,
+    whitePlayer: this.players.white,
+    blackPlayer: this.players.black
+  });
+
   // Try the standard method first
   const color = this.getPlayerColor(userId, guestId);
-  if (color) return color;
+  if (color) {
+    console.log('Standard method returned color:', color);
+    return color;
+  }
   
   // Fallback to username check for edge cases
   if (username) {
-    if (this.players.white.username === username) return 'white';
-    if (this.players.black.username === username) return 'black';
+    if (this.players.white.username === username) {
+      console.log('Fallback method matched white player by username');
+      return 'white';
+    }
+    if (this.players.black.username === username) {
+      console.log('Fallback method matched black player by username');
+      return 'black';
+    }
   }
   
+  console.log('No player color match found');
   return null;
 };
 

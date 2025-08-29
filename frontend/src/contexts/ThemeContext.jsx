@@ -66,7 +66,7 @@ const ThemeProvider = ({ children }) => {
         darkSquare: isDark ? 'bg-amber-800' : 'bg-amber-600',
         highlight: isDark ? 'bg-yellow-500 bg-opacity-60' : 'bg-yellow-400 bg-opacity-50',
         lastMove: isDark ? 'bg-green-500 bg-opacity-40' : 'bg-green-400 bg-opacity-30',
-        check: isDark ? 'bg-red-500 bg-opacity-60' : 'bg-red-500 bg-opacity-50',
+        check: isDark ? 'border-2 border-red-500 ' : 'border-2 border-red-500',
         possibleMove: isDark ? 'bg-blue-500 bg-opacity-40' : 'bg-blue-400 bg-opacity-30',
         capture: isDark ? 'bg-red-500 bg-opacity-50' : 'bg-red-400 bg-opacity-40',
       },

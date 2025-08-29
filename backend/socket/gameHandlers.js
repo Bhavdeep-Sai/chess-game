@@ -242,9 +242,17 @@ const handleConnection = (io) => {
           roomManager.updateRoomActivity(roomId);
 
           // Send current game state
+          const reconnectPlayerColor = game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username);
+          console.log('Sending reconnect game_state with player color:', {
+            reconnectPlayerColor,
+            socketUserId: socket.userId,
+            socketGuestId: socket.guestId,
+            socketUsername: socket.username
+          });
+
           socket.emit('game_state', {
             game: game.getGameState(),
-            playerColor: game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username),
+            playerColor: reconnectPlayerColor,
             isSpectator: false
           });
 
@@ -510,9 +518,27 @@ const handleConnection = (io) => {
         await game.save();
 
         // Send game state to the user
+        const userPlayerColor = game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username);
+        console.log('Sending game_state with player color:', {
+          userPlayerColor,
+          socketUserId: socket.userId,
+          socketGuestId: socket.guestId,
+          socketUsername: socket.username,
+          whitePlayer: {
+            userId: game.players.white.userId,
+            guestId: game.players.white.guestId,
+            username: game.players.white.username
+          },
+          blackPlayer: {
+            userId: game.players.black.userId,
+            guestId: game.players.black.guestId,
+            username: game.players.black.username
+          }
+        });
+
         socket.emit('game_state', {
           game: game.getGameState(),
-          playerColor: game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username),
+          playerColor: userPlayerColor,
           isSpectator: spectate
         });
 
@@ -655,7 +681,7 @@ const handleConnection = (io) => {
     // Handle chess moves
     socket.on('make_move', async (data) => {
       try {
-        const { roomId, from, to } = data;
+        const { roomId, from, to, moveStartTime } = data;
         
         const game = await Game.findOne({ roomId });
         if (!game) {
@@ -669,7 +695,7 @@ const handleConnection = (io) => {
         }
 
         // Verify it's the player's turn
-        const playerColor = game.getPlayerColor(socket.userId, socket.guestId);
+        const playerColor = game.getPlayerColorWithFallback(socket.userId, socket.guestId, socket.username);
         console.log('Make move debug:', {
           socketUserId: socket.userId,
           socketGuestId: socket.guestId,
@@ -737,6 +763,9 @@ const handleConnection = (io) => {
         const isOpponentInCheck = isInCheck(newBoard, opponentColor);
         const isOpponentCheckmate = isCheckmate(newBoard, opponentColor);
 
+        // Calculate move time
+        const moveTime = moveStartTime ? Date.now() - moveStartTime : 0;
+
         // Create move record
         const moveRecord = {
           from,
@@ -744,6 +773,7 @@ const handleConnection = (io) => {
           piece,
           captured: capturedPiece,
           notation: algebraicNotation(from, to, piece, capturedPiece, isOpponentInCheck, isOpponentCheckmate),
+          moveTime,
           timestamp: new Date()
         };
 
